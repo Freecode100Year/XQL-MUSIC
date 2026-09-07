@@ -1,5 +1,5 @@
 import { Page } from '../types';
-import { CrossfeedMode, OutputMode } from '../utils/storage';
+import { CrossfeedMode, OutputMode, SpatialMode } from '../utils/storage';
 import { useI18n } from '../i18n';
 
 interface SidebarProps {
@@ -12,17 +12,25 @@ interface SidebarProps {
   crossfeedMode: CrossfeedMode;
   outputMode: OutputMode;
   eqEnabled: boolean;
+  spatialMode: SpatialMode;
+  nightMode: boolean;
+  balance: number;
   onSetVolume: (value: number) => void;
   onSetGainMultiplier: (value: number) => void;
   onCycleCrossfeed: () => void;
   onToggleOutput: () => void;
   onShowEqualizer: () => void;
+  onToggleStereoWide: () => void;
+  onToggleMono: () => void;
+  onSetBalance: (value: number) => void;
+  onToggleNightMode: () => void;
 }
 
 export function Sidebar({
   currentPage, setPage, mobileOpen, setMobileOpen, volume, gainMultiplier,
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
-  onCycleCrossfeed, onToggleOutput, onShowEqualizer,
+  onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
+  balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -132,6 +140,47 @@ export function Sidebar({
                 value={volume}
                 onChange={(event) => onSetVolume(parseFloat(event.target.value))}
                 aria-label={t('audio.volumeLabel')}
+              />
+            </label>
+
+            <div className="sidebar-audio-title sidebar-booster-title">{t('booster.title')}</div>
+            <button
+              className={`sidebar-audio-button ${spatialMode === 'wide' ? 'active' : ''}`}
+              onClick={onToggleStereoWide}
+              title={t('booster.stereoTitle')}
+            >
+              <span>{t('booster.stereo')}</span>
+              <strong>{spatialMode === 'wide' ? t('audio.on') : t('audio.off')}</strong>
+            </button>
+            <button
+              className={`sidebar-audio-button ${spatialMode === 'mono' ? 'active' : ''}`}
+              onClick={onToggleMono}
+              title={t('booster.monoTitle')}
+            >
+              <span>{t('booster.mono')}</span>
+              <strong>{spatialMode === 'mono' ? t('audio.on') : t('audio.off')}</strong>
+            </button>
+            <button
+              className={`sidebar-audio-button ${nightMode ? 'active' : ''}`}
+              onClick={onToggleNightMode}
+              title={t('booster.nightTitle')}
+            >
+              <span>{t('booster.night')}</span>
+              <strong>{nightMode ? t('audio.on') : t('audio.off')}</strong>
+            </button>
+            <label className="sidebar-range-control">
+              <span className="sidebar-control-header">
+                <span>{t('booster.balance')}</span>
+                <strong>{balance === 0 ? t('booster.center') : balance < 0 ? t('booster.left') : t('booster.right')}</strong>
+              </span>
+              <input
+                type="range"
+                min="-1"
+                max="1"
+                step="0.01"
+                value={balance}
+                onChange={(event) => onSetBalance(parseFloat(event.target.value))}
+                aria-label={t('booster.balanceLabel')}
               />
             </label>
           </section>

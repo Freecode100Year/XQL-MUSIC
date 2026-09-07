@@ -10,6 +10,9 @@ import {
   getLoudnessComp, setLoudnessComp as saveLoudnessComp,
   getOutputMode, setOutputMode as saveOutputMode, OutputMode,
   getGainMultiplier, setGainMultiplier as saveGainMultiplier,
+  getSpatialMode, setSpatialMode as saveSpatialMode, SpatialMode,
+  getNightMode, setNightMode as saveNightMode,
+  getBalance, setBalance as saveBalance,
 } from '../utils/storage';
 import { useI18n } from '../i18n';
 
@@ -141,6 +144,15 @@ export function usePlayer(
   const voicingRef = useRef<{ input: BiquadFilterNode; output: GainNode } | null>(null);
   const contourRef = useRef<{ low: BiquadFilterNode; high: BiquadFilterNode } | null>(null);
   const limiterRef = useRef<DynamicsCompressorNode | null>(null);
+  const nightCompressorRef = useRef<DynamicsCompressorNode | null>(null);
+  const spatialRef = useRef<{
+    input: GainNode;
+    output: GainNode;
+    leftDirect: GainNode;
+    leftCross: GainNode;
+    rightDirect: GainNode;
+    rightCross: GainNode;
+  } | null>(null);
   const loudnessGainRef = useRef<GainNode | null>(null);
   const meterRef = useRef<{ shelf: BiquadFilterNode; hp: BiquadFilterNode; analyser: AnalyserNode } | null>(null);
   const loudnessTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -157,6 +169,9 @@ export function usePlayer(
   const [loudnessComp, setLoudnessCompState] = useState(getLoudnessComp());
   const [outputMode, setOutputModeState] = useState<OutputMode>(getOutputMode());
   const [gainMultiplier, setGainMultiplierState] = useState(getGainMultiplier());
+  const [spatialMode, setSpatialModeState] = useState<SpatialMode>(getSpatialMode());
+  const [nightMode, setNightModeState] = useState(getNightMode());
+  const [balance, setBalanceState] = useState(getBalance());
   const [queue, setQueue] = useState<Song[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
@@ -172,6 +187,8 @@ export function usePlayer(
   const deEsserModeRef = useRef(deEsser);
   const loudnessCompRef = useRef(loudnessComp);
   const outputModeRef = useRef(outputMode);
+  const spatialModeRef = useRef(spatialMode);
+  const balanceRef = useRef(balance);
   const equalizerRef = useRef(equalizer);
   equalizerRef.current = equalizer;
 
@@ -432,6 +449,63 @@ export function usePlayer(
     nodes.high.gain.setTargetAtTime(highDb, ctx.currentTime, 0.05);
   }, []);
 
+  // Mid/side stereo control inspired by the extension's "Music Stereo+" mode.
+  // It remains a two-channel signal, so it is safe for ordinary headphones and
+  // speakers. Wide uses a deliberately small 1.15 width factor; the limiter
+  // remains downstream for exceptionally wide, already-hot masters.
+  const ensureSpatialNodes = useCallback((ctx: AudioContext) => {
+    if (spatialRef.current) return spatialRef.current;
+    const input = ctx.createGain();
+    const splitter = ctx.createChannelSplitter(2);
+    const merger = ctx.createChannelMerger(2);
+    const output = ctx.createGain();
+    const leftDirect = ctx.createGain();
+    const leftCross = ctx.createGain();
+    const rightDirect = ctx.createGain();
+    const rightCross = ctx.createGain();
+    input.connect(splitter);
+    splitter.connect(leftDirect, 0);
+    splitter.connect(rightCross, 1);
+    splitter.connect(rightDirect, 1);
+    splitter.connect(leftCross, 0);
+    leftDirect.connect(merger, 0, 0);
+    leftCross.connect(merger, 0, 1);
+    rightDirect.connect(merger, 0, 1);
+    rightCross.connect(merger, 0, 0);
+    merger.connect(output);
+    spatialRef.current = { input, output, leftDirect, leftCross, rightDirect, rightCross };
+    return spatialRef.current;
+  }, []);
+
+  const applySpatialParams = useCallback((mode: SpatialMode, balanceValue: number) => {
+    const nodes = spatialRef.current;
+    const ctx = audioCtxRef.current;
+    if (!nodes || !ctx) return;
+    const width = mode === 'wide' ? 1.15 : mode === 'mono' ? 0 : 1;
+    const leftLevel = balanceValue > 0 ? 1 - balanceValue : 1;
+    const rightLevel = balanceValue < 0 ? 1 + balanceValue : 1;
+    const direct = (1 + width) / 2;
+    const cross = (1 - width) / 2;
+    const time = ctx.currentTime;
+    nodes.leftDirect.gain.setTargetAtTime(direct * leftLevel, time, 0.02);
+    nodes.rightCross.gain.setTargetAtTime(cross * leftLevel, time, 0.02);
+    nodes.rightDirect.gain.setTargetAtTime(direct * rightLevel, time, 0.02);
+    nodes.leftCross.gain.setTargetAtTime(cross * rightLevel, time, 0.02);
+  }, []);
+
+  const ensureNightCompressor = useCallback((ctx: AudioContext) => {
+    if (!nightCompressorRef.current) {
+      const compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 18;
+      compressor.ratio.value = 3;
+      compressor.attack.value = 0.015;
+      compressor.release.value = 0.24;
+      nightCompressorRef.current = compressor;
+    }
+    return nightCompressorRef.current;
+  }, []);
+
   // Brick-wall safety net, sitting after the volume control so it only ever acts
   // on what actually reaches the DAC. With the EQ preamp and the voicing trim
   // doing their job it should almost never engage.
@@ -503,7 +577,7 @@ export function usePlayer(
     const isSpeaker = outputModeRef.current === 'speaker';
     const useCrossfeed = !isSpeaker && crossfeedRefMode.current !== 'off';
     const useDeEsser = !isSpeaker && deEsserModeRef.current;
-    const topology = `${isSpeaker ? 'spk' : 'hp'}|${useCrossfeed ? 'cf' : '-'}|${useDeEsser ? 'de' : '-'}`;
+    const topology = `${isSpeaker ? 'spk' : 'hp'}|${useCrossfeed ? 'cf' : '-'}|${useDeEsser ? 'de' : '-'}|${nightMode ? 'night' : '-'}`;
 
     if (webAudioActiveRef.current && topologyRef.current === topology) {
       ctx.resume().catch(() => {});
@@ -532,6 +606,8 @@ export function usePlayer(
     if (crossfeedRef.current) disconnectSafe(crossfeedRef.current.output);
     if (deEsserRef.current) disconnectSafe(deEsserRef.current.output);
     if (voicingRef.current) disconnectSafe(voicingRef.current.output);
+    if (spatialRef.current) disconnectSafe(spatialRef.current.output);
+    if (nightCompressorRef.current) disconnectSafe(nightCompressorRef.current);
 
     // source -> subsonic -> EQ -> EQ preamp -> [voicing | de-esser]
     //        -> [crossfeed] -> loudness -> contour -> user gain -> volume
@@ -557,6 +633,16 @@ export function usePlayer(
       tail = cf.output;
     }
 
+    const spatial = ensureSpatialNodes(ctx);
+    tail.connect(spatial.input);
+    tail = spatial.output;
+
+    if (nightMode) {
+      const night = ensureNightCompressor(ctx);
+      tail.connect(night);
+      tail = night;
+    }
+
     tail.connect(loudnessGain);
     loudnessGain.connect(contour.low);
     contour.high.connect(gainNode);
@@ -576,6 +662,7 @@ export function usePlayer(
     gainNode.gain.value = gainMultiplierRef.current;
     highpass.frequency.value = SUBSONIC_HZ[outputModeRef.current];
     applyCrossfeedParams(useCrossfeed ? crossfeedRefMode.current : 'off');
+    applySpatialParams(spatialModeRef.current, balanceRef.current);
     applyContour();
 
     webAudioActiveRef.current = true;
@@ -584,7 +671,8 @@ export function usePlayer(
   }, [
     disconnectSafe, ensureHighpass, ensureGainNode, ensureVolumeGain, ensureEnvGain,
     ensureLimiter, ensureContourNodes, ensureLoudnessNodes, ensureCrossfeedNodes,
-    ensureDeEsserNodes, ensureVoicingNodes, applyCrossfeedParams, applyContour,
+    ensureDeEsserNodes, ensureVoicingNodes, ensureSpatialNodes, ensureNightCompressor,
+    applyCrossfeedParams, applySpatialParams, applyContour, nightMode,
   ]);
 
   // Walk loudnessGain towards a common level. Deliberately slow (3 s time
@@ -872,6 +960,37 @@ export function usePlayer(
     applyContour();
   }, [applyContour]);
 
+  const toggleStereoWide = useCallback(() => {
+    const next: SpatialMode = spatialModeRef.current === 'wide' ? 'off' : 'wide';
+    spatialModeRef.current = next;
+    setSpatialModeState(next);
+    saveSpatialMode(next);
+    applySpatialParams(next, balanceRef.current);
+  }, [applySpatialParams]);
+
+  const toggleMono = useCallback(() => {
+    const next: SpatialMode = spatialModeRef.current === 'mono' ? 'off' : 'mono';
+    spatialModeRef.current = next;
+    setSpatialModeState(next);
+    saveSpatialMode(next);
+    applySpatialParams(next, balanceRef.current);
+  }, [applySpatialParams]);
+
+  const setBalance = useCallback((value: number) => {
+    const next = Math.max(-1, Math.min(1, Number.isFinite(value) ? value : 0));
+    balanceRef.current = next;
+    setBalanceState(next);
+    saveBalance(next);
+    applySpatialParams(spatialModeRef.current, next);
+  }, [applySpatialParams]);
+
+  const toggleNightMode = useCallback(() => {
+    const next = !nightMode;
+    setNightModeState(next);
+    saveNightMode(next);
+    duckThroughRebuild();
+  }, [nightMode, duckThroughRebuild]);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     let nextIndex: number;
@@ -1010,7 +1129,7 @@ export function usePlayer(
   useEffect(() => {
     if (!isPlaying && !webAudioActiveRef.current) return;
     activateWebAudio();
-  }, [isPlaying, outputMode, crossfeedMode, deEsser, activateWebAudio]);
+  }, [isPlaying, outputMode, crossfeedMode, deEsser, nightMode, activateWebAudio]);
 
   const preloadNext = useCallback(() => {
     if (queue.length === 0) return;
@@ -1099,6 +1218,9 @@ export function usePlayer(
     loudnessComp,
     outputMode,
     gainMultiplier,
+    spatialMode,
+    nightMode,
+    balance,
     queue,
     queueIndex,
     loading,
@@ -1108,6 +1230,10 @@ export function usePlayer(
     setVolume,
     setPlayMode,
     setGainMultiplier,
+    toggleStereoWide,
+    toggleMono,
+    setBalance,
+    toggleNightMode,
     cycleCrossfeed,
     toggleDeEsser,
     toggleLoudnessComp,

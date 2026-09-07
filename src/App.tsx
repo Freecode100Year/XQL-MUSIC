@@ -162,11 +162,18 @@ export default function App() {
         crossfeedMode={player.crossfeedMode}
         outputMode={player.outputMode}
         eqEnabled={eq.enabled}
+        spatialMode={player.spatialMode}
+        nightMode={player.nightMode}
+        balance={player.balance}
         onSetVolume={player.setVolume}
         onSetGainMultiplier={player.setGainMultiplier}
         onCycleCrossfeed={player.cycleCrossfeed}
         onToggleOutput={player.toggleOutputMode}
         onShowEqualizer={() => setShowEqualizer(true)}
+        onToggleStereoWide={player.toggleStereoWide}
+        onToggleMono={player.toggleMono}
+        onSetBalance={player.setBalance}
+        onToggleNightMode={player.toggleNightMode}
       >
         {currentPage === 'home' && (
           <HomePage

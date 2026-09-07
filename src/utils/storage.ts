@@ -13,6 +13,9 @@ const KEYS = {
   EQ_ENABLED: 'xql_eq_enabled',
   EQ_GAINS: 'xql_eq_gains',
   EQ_PRESET: 'xql_eq_preset',
+  SPATIAL_MODE: 'xql_spatial_mode',
+  NIGHT_MODE: 'xql_night_mode',
+  BALANCE: 'xql_balance',
 } as const;
 
 export function clearLegacyAuthData(): void {
@@ -124,6 +127,34 @@ export function getGainMultiplier(): number {
 
 export function setGainMultiplier(gain: number): void {
   localStorage.setItem(KEYS.GAIN_MULTIPLIER, String(gain));
+}
+
+export type SpatialMode = 'off' | 'wide' | 'mono';
+
+export function getSpatialMode(): SpatialMode {
+  const mode = localStorage.getItem(KEYS.SPATIAL_MODE);
+  return mode === 'wide' || mode === 'mono' ? mode : 'off';
+}
+
+export function setSpatialMode(mode: SpatialMode): void {
+  localStorage.setItem(KEYS.SPATIAL_MODE, mode);
+}
+
+export function getNightMode(): boolean {
+  return localStorage.getItem(KEYS.NIGHT_MODE) === 'true';
+}
+
+export function setNightMode(enabled: boolean): void {
+  localStorage.setItem(KEYS.NIGHT_MODE, String(enabled));
+}
+
+export function getBalance(): number {
+  const value = Number.parseFloat(localStorage.getItem(KEYS.BALANCE) || '0');
+  return Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
+}
+
+export function setBalance(value: number): void {
+  localStorage.setItem(KEYS.BALANCE, String(Math.max(-1, Math.min(1, value))));
 }
 
 export function getEqEnabled(): boolean {
