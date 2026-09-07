@@ -16,6 +16,8 @@ interface SidebarProps {
   nightMode: boolean;
   balance: number;
   virtual8d: boolean;
+  virtual8dSpeed: number;
+  virtual8dDepth: number;
   onSetVolume: (value: number) => void;
   onSetGainMultiplier: (value: number) => void;
   onCycleCrossfeed: () => void;
@@ -26,6 +28,8 @@ interface SidebarProps {
   onSetBalance: (value: number) => void;
   onToggleNightMode: () => void;
   onToggleVirtual8d: () => void;
+  onSetVirtual8dSpeed: (value: number) => void;
+  onSetVirtual8dDepth: (value: number) => void;
 }
 
 export function Sidebar({
@@ -34,6 +38,7 @@ export function Sidebar({
   onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
   balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
   virtual8d, onToggleVirtual8d,
+  virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -89,7 +94,7 @@ export function Sidebar({
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
                 <span>{t('audio.gain')}</span>
-                <strong>{gainMultiplier.toFixed(1)}x</strong>
+                <strong>{Math.round(gainMultiplier * 100)}%</strong>
               </span>
               <input
                 type="range"
@@ -179,6 +184,40 @@ export function Sidebar({
               <span>{t('booster.virtual8d')}</span>
               <strong>{virtual8d ? t('audio.on') : t('audio.off')}</strong>
             </button>
+            {virtual8d && (
+              <>
+                <label className="sidebar-range-control">
+                  <span className="sidebar-control-header">
+                    <span>{t('booster.virtual8dSpeed')}</span>
+                    <strong>{t('booster.perMinute', { count: (virtual8dSpeed * 60).toFixed(1) })}</strong>
+                  </span>
+                  <input
+                    type="range"
+                    min="0.03"
+                    max="0.2"
+                    step="0.005"
+                    value={virtual8dSpeed}
+                    onChange={(event) => onSetVirtual8dSpeed(parseFloat(event.target.value))}
+                    aria-label={t('booster.virtual8dSpeedLabel')}
+                  />
+                </label>
+                <label className="sidebar-range-control">
+                  <span className="sidebar-control-header">
+                    <span>{t('booster.virtual8dDepth')}</span>
+                    <strong>{Math.round(virtual8dDepth * 100)}%</strong>
+                  </span>
+                  <input
+                    type="range"
+                    min="0.15"
+                    max="1"
+                    step="0.01"
+                    value={virtual8dDepth}
+                    onChange={(event) => onSetVirtual8dDepth(parseFloat(event.target.value))}
+                    aria-label={t('booster.virtual8dDepthLabel')}
+                  />
+                </label>
+              </>
+            )}
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
                 <span>{t('booster.balance')}</span>

@@ -166,6 +166,8 @@ export default function App() {
         nightMode={player.nightMode}
         balance={player.balance}
         virtual8d={player.virtual8d}
+        virtual8dSpeed={player.virtual8dSpeed}
+        virtual8dDepth={player.virtual8dDepth}
         onSetVolume={player.setVolume}
         onSetGainMultiplier={player.setGainMultiplier}
         onCycleCrossfeed={player.cycleCrossfeed}
@@ -176,6 +178,8 @@ export default function App() {
         onSetBalance={player.setBalance}
         onToggleNightMode={player.toggleNightMode}
         onToggleVirtual8d={player.toggleVirtual8d}
+        onSetVirtual8dSpeed={player.setVirtual8dSpeed}
+        onSetVirtual8dDepth={player.setVirtual8dDepth}
       >
         {currentPage === 'home' && (
           <HomePage

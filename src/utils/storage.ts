@@ -17,6 +17,8 @@ const KEYS = {
   NIGHT_MODE: 'xql_night_mode',
   BALANCE: 'xql_balance',
   VIRTUAL_8D: 'xql_virtual_8d',
+  VIRTUAL_8D_SPEED: 'xql_virtual_8d_speed',
+  VIRTUAL_8D_DEPTH: 'xql_virtual_8d_depth',
 } as const;
 
 export function clearLegacyAuthData(): void {
@@ -164,6 +166,27 @@ export function getVirtual8d(): boolean {
 
 export function setVirtual8d(enabled: boolean): void {
   localStorage.setItem(KEYS.VIRTUAL_8D, String(enabled));
+}
+
+function getBoundedNumber(key: string, fallback: number, min: number, max: number): number {
+  const value = Number.parseFloat(localStorage.getItem(key) || '');
+  return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : fallback;
+}
+
+export function getVirtual8dSpeed(): number {
+  return getBoundedNumber(KEYS.VIRTUAL_8D_SPEED, 0.075, 0.03, 0.2);
+}
+
+export function setVirtual8dSpeed(value: number): void {
+  localStorage.setItem(KEYS.VIRTUAL_8D_SPEED, String(Math.max(0.03, Math.min(0.2, value))));
+}
+
+export function getVirtual8dDepth(): number {
+  return getBoundedNumber(KEYS.VIRTUAL_8D_DEPTH, 0.78, 0.15, 1);
+}
+
+export function setVirtual8dDepth(value: number): void {
+  localStorage.setItem(KEYS.VIRTUAL_8D_DEPTH, String(Math.max(0.15, Math.min(1, value))));
 }
 
 export function getEqEnabled(): boolean {

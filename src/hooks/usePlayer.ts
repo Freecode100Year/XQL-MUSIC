@@ -14,6 +14,8 @@ import {
   getNightMode, setNightMode as saveNightMode,
   getBalance, setBalance as saveBalance,
   getVirtual8d, setVirtual8d as saveVirtual8d,
+  getVirtual8dSpeed, setVirtual8dSpeed as saveVirtual8dSpeed,
+  getVirtual8dDepth, setVirtual8dDepth as saveVirtual8dDepth,
 } from '../utils/storage';
 import { useI18n } from '../i18n';
 
@@ -181,6 +183,8 @@ export function usePlayer(
   const [nightMode, setNightModeState] = useState(getNightMode());
   const [balance, setBalanceState] = useState(getBalance());
   const [virtual8d, setVirtual8dState] = useState(getVirtual8d());
+  const [virtual8dSpeed, setVirtual8dSpeedState] = useState(getVirtual8dSpeed());
+  const [virtual8dDepth, setVirtual8dDepthState] = useState(getVirtual8dDepth());
   const [queue, setQueue] = useState<Song[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
@@ -198,6 +202,8 @@ export function usePlayer(
   const outputModeRef = useRef(outputMode);
   const spatialModeRef = useRef(spatialMode);
   const balanceRef = useRef(balance);
+  const virtual8dSpeedRef = useRef(virtual8dSpeed);
+  const virtual8dDepthRef = useRef(virtual8dDepth);
   const equalizerRef = useRef(equalizer);
   equalizerRef.current = equalizer;
 
@@ -514,8 +520,8 @@ export function usePlayer(
     const oscillator = ctx.createOscillator();
     const lfoDepth = ctx.createGain();
     oscillator.type = 'sine';
-    oscillator.frequency.value = 0.075; // 13.3 seconds per complete left/right orbit
-    lfoDepth.gain.value = 0.78;
+    oscillator.frequency.value = virtual8dSpeedRef.current;
+    lfoDepth.gain.value = virtual8dDepthRef.current;
     oscillator.connect(lfoDepth);
     lfoDepth.connect(panner.pan);
     input.connect(panner);
@@ -1038,6 +1044,24 @@ export function usePlayer(
     duckThroughRebuild();
   }, [virtual8d, duckThroughRebuild]);
 
+  const setVirtual8dSpeed = useCallback((value: number) => {
+    const next = Math.max(0.03, Math.min(0.2, Number.isFinite(value) ? value : 0.075));
+    virtual8dSpeedRef.current = next;
+    setVirtual8dSpeedState(next);
+    saveVirtual8dSpeed(next);
+    const ctx = audioCtxRef.current;
+    virtual8dRef.current?.oscillator.frequency.setTargetAtTime(next, ctx?.currentTime || 0, 0.08);
+  }, []);
+
+  const setVirtual8dDepth = useCallback((value: number) => {
+    const next = Math.max(0.15, Math.min(1, Number.isFinite(value) ? value : 0.78));
+    virtual8dDepthRef.current = next;
+    setVirtual8dDepthState(next);
+    saveVirtual8dDepth(next);
+    const ctx = audioCtxRef.current;
+    virtual8dRef.current?.lfoDepth.gain.setTargetAtTime(next, ctx?.currentTime || 0, 0.08);
+  }, []);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     let nextIndex: number;
@@ -1269,6 +1293,8 @@ export function usePlayer(
     nightMode,
     balance,
     virtual8d,
+    virtual8dSpeed,
+    virtual8dDepth,
     queue,
     queueIndex,
     loading,
@@ -1283,6 +1309,8 @@ export function usePlayer(
     setBalance,
     toggleNightMode,
     toggleVirtual8d,
+    setVirtual8dSpeed,
+    setVirtual8dDepth,
     cycleCrossfeed,
     toggleDeEsser,
     toggleLoudnessComp,
