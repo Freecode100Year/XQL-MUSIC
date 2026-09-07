@@ -17,6 +17,7 @@ interface LayoutProps {
   spatialMode: SpatialMode;
   nightMode: boolean;
   balance: number;
+  virtual8d: boolean;
   onSetVolume: (value: number) => void;
   onSetGainMultiplier: (value: number) => void;
   onCycleCrossfeed: () => void;
@@ -26,6 +27,7 @@ interface LayoutProps {
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
   onToggleNightMode: () => void;
+  onToggleVirtual8d: () => void;
 }
 
 export function Layout({
@@ -33,6 +35,7 @@ export function Layout({
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
   onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
   balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
+  virtual8d, onToggleVirtual8d,
 }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -51,6 +54,7 @@ export function Layout({
         spatialMode={spatialMode}
         nightMode={nightMode}
         balance={balance}
+        virtual8d={virtual8d}
         onSetVolume={onSetVolume}
         onSetGainMultiplier={onSetGainMultiplier}
         onCycleCrossfeed={onCycleCrossfeed}
@@ -60,6 +64,7 @@ export function Layout({
         onToggleMono={onToggleMono}
         onSetBalance={onSetBalance}
         onToggleNightMode={onToggleNightMode}
+        onToggleVirtual8d={onToggleVirtual8d}
       />
       <main className="main-content">
         <TopBar

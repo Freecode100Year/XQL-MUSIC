@@ -13,6 +13,7 @@ import {
   getSpatialMode, setSpatialMode as saveSpatialMode, SpatialMode,
   getNightMode, setNightMode as saveNightMode,
   getBalance, setBalance as saveBalance,
+  getVirtual8d, setVirtual8d as saveVirtual8d,
 } from '../utils/storage';
 import { useI18n } from '../i18n';
 
@@ -153,6 +154,13 @@ export function usePlayer(
     rightDirect: GainNode;
     rightCross: GainNode;
   } | null>(null);
+  const virtual8dRef = useRef<{
+    input: GainNode;
+    output: GainNode;
+    panner: StereoPannerNode;
+    lfoDepth: GainNode;
+    oscillator: OscillatorNode;
+  } | null>(null);
   const loudnessGainRef = useRef<GainNode | null>(null);
   const meterRef = useRef<{ shelf: BiquadFilterNode; hp: BiquadFilterNode; analyser: AnalyserNode } | null>(null);
   const loudnessTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -172,6 +180,7 @@ export function usePlayer(
   const [spatialMode, setSpatialModeState] = useState<SpatialMode>(getSpatialMode());
   const [nightMode, setNightModeState] = useState(getNightMode());
   const [balance, setBalanceState] = useState(getBalance());
+  const [virtual8d, setVirtual8dState] = useState(getVirtual8d());
   const [queue, setQueue] = useState<Song[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
@@ -493,6 +502,29 @@ export function usePlayer(
     nodes.leftCross.gain.setTargetAtTime(cross * rightLevel, time, 0.02);
   }, []);
 
+  // "8D" in a two-channel player is a continuously moving equal-power stereo
+  // image, not a fake multichannel output. A sine LFO keeps the movement smooth
+  // at every crossover point and StereoPanner preserves perceived loudness as
+  // the image crosses the centre.
+  const ensureVirtual8dNodes = useCallback((ctx: AudioContext) => {
+    if (virtual8dRef.current) return virtual8dRef.current;
+    const input = ctx.createGain();
+    const panner = ctx.createStereoPanner();
+    const output = ctx.createGain();
+    const oscillator = ctx.createOscillator();
+    const lfoDepth = ctx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = 0.075; // 13.3 seconds per complete left/right orbit
+    lfoDepth.gain.value = 0.78;
+    oscillator.connect(lfoDepth);
+    lfoDepth.connect(panner.pan);
+    input.connect(panner);
+    panner.connect(output);
+    oscillator.start();
+    virtual8dRef.current = { input, output, panner, lfoDepth, oscillator };
+    return virtual8dRef.current;
+  }, []);
+
   const ensureNightCompressor = useCallback((ctx: AudioContext) => {
     if (!nightCompressorRef.current) {
       const compressor = ctx.createDynamicsCompressor();
@@ -577,7 +609,7 @@ export function usePlayer(
     const isSpeaker = outputModeRef.current === 'speaker';
     const useCrossfeed = !isSpeaker && crossfeedRefMode.current !== 'off';
     const useDeEsser = !isSpeaker && deEsserModeRef.current;
-    const topology = `${isSpeaker ? 'spk' : 'hp'}|${useCrossfeed ? 'cf' : '-'}|${useDeEsser ? 'de' : '-'}|${nightMode ? 'night' : '-'}`;
+    const topology = `${isSpeaker ? 'spk' : 'hp'}|${useCrossfeed ? 'cf' : '-'}|${useDeEsser ? 'de' : '-'}|${virtual8d ? '8d' : '-'}|${nightMode ? 'night' : '-'}`;
 
     if (webAudioActiveRef.current && topologyRef.current === topology) {
       ctx.resume().catch(() => {});
@@ -607,6 +639,7 @@ export function usePlayer(
     if (deEsserRef.current) disconnectSafe(deEsserRef.current.output);
     if (voicingRef.current) disconnectSafe(voicingRef.current.output);
     if (spatialRef.current) disconnectSafe(spatialRef.current.output);
+    if (virtual8dRef.current) disconnectSafe(virtual8dRef.current.output);
     if (nightCompressorRef.current) disconnectSafe(nightCompressorRef.current);
 
     // source -> subsonic -> EQ -> EQ preamp -> [voicing | de-esser]
@@ -636,6 +669,12 @@ export function usePlayer(
     const spatial = ensureSpatialNodes(ctx);
     tail.connect(spatial.input);
     tail = spatial.output;
+
+    if (virtual8d) {
+      const virtual = ensureVirtual8dNodes(ctx);
+      tail.connect(virtual.input);
+      tail = virtual.output;
+    }
 
     if (nightMode) {
       const night = ensureNightCompressor(ctx);
@@ -671,8 +710,9 @@ export function usePlayer(
   }, [
     disconnectSafe, ensureHighpass, ensureGainNode, ensureVolumeGain, ensureEnvGain,
     ensureLimiter, ensureContourNodes, ensureLoudnessNodes, ensureCrossfeedNodes,
-    ensureDeEsserNodes, ensureVoicingNodes, ensureSpatialNodes, ensureNightCompressor,
+    ensureDeEsserNodes, ensureVoicingNodes, ensureSpatialNodes, ensureVirtual8dNodes, ensureNightCompressor,
     applyCrossfeedParams, applySpatialParams, applyContour, nightMode,
+    virtual8d,
   ]);
 
   // Walk loudnessGain towards a common level. Deliberately slow (3 s time
@@ -991,6 +1031,13 @@ export function usePlayer(
     duckThroughRebuild();
   }, [nightMode, duckThroughRebuild]);
 
+  const toggleVirtual8d = useCallback(() => {
+    const next = !virtual8d;
+    setVirtual8dState(next);
+    saveVirtual8d(next);
+    duckThroughRebuild();
+  }, [virtual8d, duckThroughRebuild]);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     let nextIndex: number;
@@ -1129,7 +1176,7 @@ export function usePlayer(
   useEffect(() => {
     if (!isPlaying && !webAudioActiveRef.current) return;
     activateWebAudio();
-  }, [isPlaying, outputMode, crossfeedMode, deEsser, nightMode, activateWebAudio]);
+  }, [isPlaying, outputMode, crossfeedMode, deEsser, virtual8d, nightMode, activateWebAudio]);
 
   const preloadNext = useCallback(() => {
     if (queue.length === 0) return;
@@ -1221,6 +1268,7 @@ export function usePlayer(
     spatialMode,
     nightMode,
     balance,
+    virtual8d,
     queue,
     queueIndex,
     loading,
@@ -1234,6 +1282,7 @@ export function usePlayer(
     toggleMono,
     setBalance,
     toggleNightMode,
+    toggleVirtual8d,
     cycleCrossfeed,
     toggleDeEsser,
     toggleLoudnessComp,

@@ -16,6 +16,7 @@ const KEYS = {
   SPATIAL_MODE: 'xql_spatial_mode',
   NIGHT_MODE: 'xql_night_mode',
   BALANCE: 'xql_balance',
+  VIRTUAL_8D: 'xql_virtual_8d',
 } as const;
 
 export function clearLegacyAuthData(): void {
@@ -155,6 +156,14 @@ export function getBalance(): number {
 
 export function setBalance(value: number): void {
   localStorage.setItem(KEYS.BALANCE, String(Math.max(-1, Math.min(1, value))));
+}
+
+export function getVirtual8d(): boolean {
+  return localStorage.getItem(KEYS.VIRTUAL_8D) === 'true';
+}
+
+export function setVirtual8d(enabled: boolean): void {
+  localStorage.setItem(KEYS.VIRTUAL_8D, String(enabled));
 }
 
 export function getEqEnabled(): boolean {

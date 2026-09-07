@@ -165,6 +165,7 @@ export default function App() {
         spatialMode={player.spatialMode}
         nightMode={player.nightMode}
         balance={player.balance}
+        virtual8d={player.virtual8d}
         onSetVolume={player.setVolume}
         onSetGainMultiplier={player.setGainMultiplier}
         onCycleCrossfeed={player.cycleCrossfeed}
@@ -174,6 +175,7 @@ export default function App() {
         onToggleMono={player.toggleMono}
         onSetBalance={player.setBalance}
         onToggleNightMode={player.toggleNightMode}
+        onToggleVirtual8d={player.toggleVirtual8d}
       >
         {currentPage === 'home' && (
           <HomePage

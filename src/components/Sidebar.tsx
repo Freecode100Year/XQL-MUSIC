@@ -15,6 +15,7 @@ interface SidebarProps {
   spatialMode: SpatialMode;
   nightMode: boolean;
   balance: number;
+  virtual8d: boolean;
   onSetVolume: (value: number) => void;
   onSetGainMultiplier: (value: number) => void;
   onCycleCrossfeed: () => void;
@@ -24,6 +25,7 @@ interface SidebarProps {
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
   onToggleNightMode: () => void;
+  onToggleVirtual8d: () => void;
 }
 
 export function Sidebar({
@@ -31,6 +33,7 @@ export function Sidebar({
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
   onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
   balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
+  virtual8d, onToggleVirtual8d,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -167,6 +170,14 @@ export function Sidebar({
             >
               <span>{t('booster.night')}</span>
               <strong>{nightMode ? t('audio.on') : t('audio.off')}</strong>
+            </button>
+            <button
+              className={`sidebar-audio-button ${virtual8d ? 'active' : ''}`}
+              onClick={onToggleVirtual8d}
+              title={t('booster.virtual8dTitle')}
+            >
+              <span>{t('booster.virtual8d')}</span>
+              <strong>{virtual8d ? t('audio.on') : t('audio.off')}</strong>
             </button>
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
