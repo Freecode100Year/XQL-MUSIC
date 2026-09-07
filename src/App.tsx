@@ -155,6 +155,16 @@ export default function App() {
         currentPage={currentPage}
         setPage={setCurrentPage}
         onSearchFocus={handleSearchFocus}
+        volume={player.volume}
+        gainMultiplier={player.gainMultiplier}
+        crossfeedMode={player.crossfeedMode}
+        outputMode={player.outputMode}
+        eqEnabled={eq.enabled}
+        onSetVolume={player.setVolume}
+        onSetGainMultiplier={player.setGainMultiplier}
+        onCycleCrossfeed={player.cycleCrossfeed}
+        onToggleOutput={player.toggleOutputMode}
+        onShowEqualizer={() => setShowEqualizer(true)}
       >
         {currentPage === 'home' && (
           <HomePage
@@ -192,25 +202,15 @@ export default function App() {
         isPlaying={player.isPlaying}
         currentTime={player.currentTime}
         duration={player.duration}
-        volume={player.volume}
         playMode={player.playMode}
-        crossfeedMode={player.crossfeedMode}
-        outputMode={player.outputMode}
         loading={player.loading}
         onTogglePlay={player.togglePlay}
         onSeek={player.seek}
-        onSetVolume={player.setVolume}
         onSetPlayMode={player.setPlayMode}
-        onCycleCrossfeed={player.cycleCrossfeed}
-        onToggleOutput={player.toggleOutputMode}
         onNext={player.playNext}
         onPrev={player.playPrev}
         onShowLyrics={() => setShowLyrics(true)}
         onShowQueue={() => setShowQueue(true)}
-        onShowEqualizer={() => setShowEqualizer(true)}
-        eqEnabled={eq.enabled}
-        gainMultiplier={player.gainMultiplier}
-        onSetGainMultiplier={player.setGainMultiplier}
       />
 
       <LyricsOverlay

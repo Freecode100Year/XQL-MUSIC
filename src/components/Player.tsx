@@ -1,7 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Song, PlayMode } from '../types';
-import { CrossfeedMode, OutputMode } from '../utils/storage';
-import { CROSSFEED_LABELS } from '../hooks/usePlayer';
 import { formatTime } from '../utils/format';
 import { API, CACHE_TTL } from '../config';
 import { requestCache } from '../utils/cache';
@@ -11,25 +9,15 @@ interface PlayerProps {
   isPlaying: boolean;
   currentTime: number;
   duration: number;
-  volume: number;
   playMode: PlayMode;
-  crossfeedMode: CrossfeedMode;
-  outputMode: OutputMode;
   loading: boolean;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
-  onSetVolume: (vol: number) => void;
   onSetPlayMode: (mode: PlayMode) => void;
-  onCycleCrossfeed: () => void;
-  onToggleOutput: () => void;
   onNext: () => void;
   onPrev: () => void;
   onShowLyrics: () => void;
   onShowQueue: () => void;
-  onShowEqualizer: () => void;
-  eqEnabled: boolean;
-  gainMultiplier: number;
-  onSetGainMultiplier: (value: number) => void;
 }
 
 export function Player({
@@ -37,29 +25,17 @@ export function Player({
   isPlaying,
   currentTime,
   duration,
-  volume,
   playMode,
-  crossfeedMode,
-  outputMode,
   loading,
   onTogglePlay,
   onSeek,
-  onSetVolume,
   onSetPlayMode,
-  onCycleCrossfeed,
-  onToggleOutput,
   onNext,
   onPrev,
   onShowLyrics,
   onShowQueue,
-  onShowEqualizer,
-  eqEnabled,
-  gainMultiplier,
-  onSetGainMultiplier,
 }: PlayerProps) {
   const [coverUrl, setCoverUrl] = useState('');
-  const [showVolume, setShowVolume] = useState(false);
-  const [showBoost, setShowBoost] = useState(false);
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState(0);
   const progressRef = useRef<HTMLDivElement>(null);
@@ -241,75 +217,9 @@ export function Player({
               <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
             </svg>
           </button>
-          <div className="player-boost-wrap">
-            <button
-              className={`player-btn player-boost-btn ${gainMultiplier > 1 ? 'boosted' : ''}`}
-              onClick={() => setShowBoost((show) => !show)}
-              aria-expanded={showBoost}
-              title="音量增强，最高 3 倍"
-            >
-              {gainMultiplier.toFixed(1)}x
-            </button>
-            {showBoost && (
-              <div className="player-boost-popup">
-                <div className="player-boost-label">
-                  <span>音量增强</span>
-                  <span className="player-boost-value">{gainMultiplier.toFixed(1)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={gainMultiplier}
-                  onChange={(e) => onSetGainMultiplier(parseFloat(e.target.value))}
-                  className="player-boost-slider"
-                  aria-label="音量增强倍数"
-                />
-              </div>
-            )}
-          </div>
           <button className="player-btn" onClick={onShowQueue}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
               <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
-            </svg>
-          </button>
-          <button
-            className={`player-btn spatial-btn ${crossfeedMode !== 'off' && outputMode === 'headphone' ? 'active' : ''}`}
-            onClick={onCycleCrossfeed}
-            disabled={outputMode === 'speaker'}
-            title={
-              outputMode === 'speaker'
-                ? '音箱外放时无需交叉馈送'
-                : `耳机交叉馈送：${CROSSFEED_LABELS[crossfeedMode]}（点击切换 关/轻/中/强）`
-            }
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d="M12 3v18c-5-2-8-6-8-9s3-7 8-9z" opacity={crossfeedMode !== 'off' ? 1 : 0.4} />
-              <path d="M14 5.5c3 1.5 5 4.5 5 6.5s-2 5-5 6.5" fill="none" stroke="currentColor" strokeWidth="1.5" opacity={crossfeedMode !== 'off' ? 1 : 0.3} />
-              <path d="M16 3.5c4 2 6.5 5.5 6.5 8.5s-2.5 6.5-6.5 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" opacity={crossfeedMode === 'strong' ? 1 : 0.3} />
-            </svg>
-            <span className="btn-badge">{CROSSFEED_LABELS[crossfeedMode]}</span>
-          </button>
-          <button
-            className={`player-btn speaker-btn ${outputMode === 'speaker' ? 'active' : ''}`}
-            onClick={onToggleOutput}
-            title={outputMode === 'speaker' ? '音箱外放：开（Marshall 音箱曲线）' : '音箱外放：关（当前为耳机模式）'}
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <rect x="5" y="2.5" width="14" height="19" rx="2" />
-              <circle cx="12" cy="15" r="3.4" fill={outputMode === 'speaker' ? 'currentColor' : 'none'} />
-              <circle cx="12" cy="6.6" r="1.6" fill={outputMode === 'speaker' ? 'currentColor' : 'none'} />
-            </svg>
-            <span className="btn-badge">{outputMode === 'speaker' ? '箱' : '耳'}</span>
-          </button>
-          <button
-            className={`player-btn eq-btn ${eqEnabled ? 'active' : ''}`}
-            onClick={onShowEqualizer}
-            title="均衡器"
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" opacity={eqEnabled ? 1 : 0.5}>
-              <path d="M7 18h2V6H7v12zm4 4h2V2h-2v20zm-8-8h2v-4H3v4zm12 4h2V6h-2v12zm4-8v4h2v-4h-2z" />
             </svg>
           </button>
         </div>
@@ -318,32 +228,6 @@ export function Player({
           <span className="player-time">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
-          <div className="player-volume-wrap">
-            <button className="player-btn" onClick={() => setShowVolume(!showVolume)}>
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                {volume === 0 ? (
-                  <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0021 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-                ) : volume < 0.5 ? (
-                  <path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z" />
-                ) : (
-                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                )}
-              </svg>
-            </button>
-            {showVolume && (
-              <div className="volume-slider-popup">
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={volume}
-                  onChange={(e) => onSetVolume(parseFloat(e.target.value))}
-                  className="volume-slider"
-                />
-              </div>
-            )}
-          </div>
         </div>
       </div>
     </div>
