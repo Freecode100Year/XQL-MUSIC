@@ -2,17 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Song } from '../types';
 import { API, CACHE_TTL } from '../config';
 import { requestCache } from '../utils/cache';
-
-const SOURCE_LABELS: Record<string, string> = {
-  wy: '网易云',
-  jx: 'JOOX',
-  au: 'Audius',
-  cc: 'ccMixter',
-  ia: '档案馆 CC',
-  netease: '网易云',
-  joox: 'JOOX',
-  all: '全网',
-};
+import { useI18n } from '../i18n';
 
 interface SongRowProps {
   song: Song;
@@ -24,6 +14,7 @@ interface SongRowProps {
 }
 
 export const SongRow = React.memo(function SongRow({ song, index, isPlaying, onPlay, onAddToQueue, onDownload }: SongRowProps) {
+  const { t } = useI18n();
   const imgRef = useRef<HTMLDivElement>(null);
   const [imgSrc, setImgSrc] = useState<string>('');
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -130,19 +121,24 @@ export const SongRow = React.memo(function SongRow({ song, index, isPlaying, onP
         <span className="song-row-artist">{song.artist}{song.album ? ` - ${song.album}` : ''}</span>
       </div>
       <div className="song-row-actions" onClick={(e) => e.stopPropagation()}>
-        <button className="action-btn" onClick={onAddToQueue} title="添加到队列">
+        <button className="action-btn" onClick={onAddToQueue} title={t('song.addQueue')}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
           </svg>
         </button>
-        <button className="action-btn" onClick={onDownload} title="下载">
+        <button className="action-btn" onClick={onDownload} title={t('song.download')}>
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
           </svg>
         </button>
       </div>
       <div className="song-row-source">
-        <span className={`source-badge source-badge-${song.source}`}>{SOURCE_LABELS[song.source] || song.source}</span>
+        <span className={`source-badge source-badge-${song.source}`}>{
+          song.source === 'wy' || song.source === 'netease' ? t('source.wy')
+            : song.source === 'ia' ? t('source.archive')
+              : song.source === 'wm' ? t('source.wikimedia')
+                : song.source
+        }</span>
       </div>
     </div>
   );

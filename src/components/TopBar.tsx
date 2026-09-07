@@ -1,5 +1,6 @@
 import React from 'react';
 import { Page } from '../types';
+import { useI18n } from '../i18n';
 
 interface TopBarProps {
   currentPage: Page;
@@ -8,9 +9,10 @@ interface TopBarProps {
 }
 
 export function TopBar({ currentPage, onMenuClick, onSearchFocus }: TopBarProps) {
+  const { t } = useI18n();
   const titles: Record<Page, string> = {
-    home: '发现音乐',
-    search: '搜索',
+    home: t('nav.home'),
+    search: t('nav.search'),
   };
 
   return (

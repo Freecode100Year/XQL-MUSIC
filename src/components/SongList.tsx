@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Song } from '../types';
 import { SongRow } from './SongRow';
+import { useI18n } from '../i18n';
 
 interface SongListProps {
   songs: Song[];
@@ -26,6 +27,7 @@ export function SongList({
   hasMore,
   onLoadMore,
 }: SongListProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleRange, setVisibleRange] = useState({ start: 0, end: 30 });
 
@@ -99,7 +101,7 @@ export function SongList({
         )}
         {hasMore && !loading && (
           <button className="load-more-btn" onClick={onLoadMore}>
-            加载更多
+            {t('search.more')}
           </button>
         )}
       </div>
@@ -136,7 +138,7 @@ export function SongList({
       )}
       {hasMore && !loading && (
         <button className="load-more-btn" onClick={onLoadMore}>
-          加载更多
+          {t('search.more')}
         </button>
       )}
     </div>

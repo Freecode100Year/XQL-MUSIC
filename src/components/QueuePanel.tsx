@@ -1,5 +1,6 @@
 import React from 'react';
 import { Song } from '../types';
+import { useI18n } from '../i18n';
 
 interface QueuePanelProps {
   visible: boolean;
@@ -12,17 +13,18 @@ interface QueuePanelProps {
 }
 
 export function QueuePanel({ visible, onClose, queue, queueIndex, onPlay, onRemove, onClear }: QueuePanelProps) {
+  const { t } = useI18n();
   if (!visible) return null;
 
   return (
     <div className="queue-panel-overlay" onClick={onClose}>
       <div className="queue-panel" onClick={(e) => e.stopPropagation()}>
         <div className="queue-panel-header">
-          <h3>播放队列</h3>
+          <h3>{t('queue.title')}</h3>
           <div className="queue-panel-actions">
-            <span className="queue-count">{queue.length} 首</span>
+            <span className="queue-count">{t('queue.count', { count: queue.length })}</span>
             <button className="queue-clear-btn" onClick={onClear} disabled={queue.length === 0}>
-              清空
+              {t('search.clear')}
             </button>
             <button className="queue-close-btn" onClick={onClose}>
               <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -34,8 +36,8 @@ export function QueuePanel({ visible, onClose, queue, queueIndex, onPlay, onRemo
         <div className="queue-list">
           {queue.length === 0 ? (
             <div className="queue-empty">
-              <p>队列为空</p>
-              <p className="queue-empty-hint">搜索歌曲并添加到队列</p>
+              <p>{t('queue.empty')}</p>
+              <p className="queue-empty-hint">{t('queue.emptyHint')}</p>
             </div>
           ) : (
             queue.map((song, i) => (

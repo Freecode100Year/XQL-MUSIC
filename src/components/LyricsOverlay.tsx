@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { LyricLine, Song } from '../types';
+import { useI18n } from '../i18n';
 
 interface LyricsOverlayProps {
   visible: boolean;
@@ -11,6 +12,7 @@ interface LyricsOverlayProps {
 }
 
 export function LyricsOverlay({ visible, onClose, lyrics, currentLineIndex, song, coverUrl }: LyricsOverlayProps) {
+  const { t } = useI18n();
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,8 +37,8 @@ export function LyricsOverlay({ visible, onClose, lyrics, currentLineIndex, song
         <div className="lyrics-header">
           {coverUrl && <img src={coverUrl} alt="" className="lyrics-cover" />}
           <div className="lyrics-song-info">
-            <h3>{song?.name || '未知歌曲'}</h3>
-            <p>{song?.artist || '未知歌手'}</p>
+            <h3>{song?.name || t('lyrics.unknownSong')}</h3>
+            <p>{song?.artist || t('lyrics.unknownArtist')}</p>
           </div>
         </div>
 
@@ -51,7 +53,7 @@ export function LyricsOverlay({ visible, onClose, lyrics, currentLineIndex, song
               </p>
             ))
           ) : (
-            <p className="lyrics-empty">暂无歌词</p>
+            <p className="lyrics-empty">{t('lyrics.empty')}</p>
           )}
         </div>
       </div>

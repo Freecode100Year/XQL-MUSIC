@@ -3,6 +3,7 @@ import { Song, PlayMode } from '../types';
 import { formatTime } from '../utils/format';
 import { API, CACHE_TTL } from '../config';
 import { requestCache } from '../utils/cache';
+import { useI18n } from '../i18n';
 
 interface PlayerProps {
   currentSong: Song | null;
@@ -35,6 +36,7 @@ export function Player({
   onShowLyrics,
   onShowQueue,
 }: PlayerProps) {
+  const { t } = useI18n();
   const [coverUrl, setCoverUrl] = useState('');
   const [hoverTime, setHoverTime] = useState<number | null>(null);
   const [hoverPos, setHoverPos] = useState(0);
@@ -185,8 +187,8 @@ export function Player({
             )}
           </div>
           <div className="player-info">
-            <span className="player-song-name">{currentSong?.name || '未播放'}</span>
-            <span className="player-artist">{currentSong?.artist || '选择一首歌曲开始播放'}</span>
+            <span className="player-song-name">{currentSong?.name || t('player.notPlaying')}</span>
+            <span className="player-artist">{currentSong?.artist || t('player.chooseSong')}</span>
           </div>
         </div>
 

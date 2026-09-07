@@ -11,6 +11,7 @@ import {
   getOutputMode, setOutputMode as saveOutputMode, OutputMode,
   getGainMultiplier, setGainMultiplier as saveGainMultiplier,
 } from '../utils/storage';
+import { useI18n } from '../i18n';
 
 interface EqualizerBridge {
   filtersRef: React.MutableRefObject<BiquadFilterNode[]>;
@@ -18,13 +19,6 @@ interface EqualizerBridge {
   createFilters: (ctx: AudioContext) => BiquadFilterNode[];
   createPreamp: (ctx: AudioContext) => GainNode;
 }
-
-export const CROSSFEED_LABELS: Record<CrossfeedMode, string> = {
-  off: '关',
-  light: '轻',
-  medium: '中',
-  strong: '强',
-};
 
 const CROSSFEED_ORDER: CrossfeedMode[] = ['off', 'light', 'medium', 'strong'];
 
@@ -106,6 +100,7 @@ export function usePlayer(
   addToast: (text: string, type?: 'success' | 'error' | 'info') => void,
   equalizer: EqualizerBridge,
 ) {
+  const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
@@ -669,7 +664,7 @@ export function usePlayer(
     const onError = () => {
       setIsPlaying(false);
       const skipped = failureSkipRef.current();
-      addToast(skipped ? '当前歌曲不可播放，已自动跳到下一首' : '播放失败，请尝试其他源', 'error');
+      addToast(skipped ? t('toast.playFailedNext') : t('toast.playFailed'), 'error');
     };
 
     audio.addEventListener('timeupdate', onTimeUpdate);
@@ -687,7 +682,7 @@ export function usePlayer(
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('error', onError);
     };
-  }, [addToast, fadeEnv]);
+  }, [addToast, fadeEnv, t]);
 
   const fetchSongUrl = useCallback(async (song: Song): Promise<string | null> => {
     const cacheKey = `song_url_${song.sourceType}_${song.source}_${song.id}`;
@@ -794,7 +789,7 @@ export function usePlayer(
     if (requestId !== playRequestRef.current) return;
     if (!url) {
       const skipped = failureSkipRef.current();
-      addToast(skipped ? '无法获取播放地址，已自动跳到下一首' : '无法获取播放地址', 'error');
+      addToast(skipped ? t('toast.urlFailedNext') : t('toast.urlFailed'), 'error');
       fadeEnv(1, 30);
       setLoading(false);
       return;
@@ -808,7 +803,7 @@ export function usePlayer(
       audioRef.current.play().catch(() => {});
     }
     setLoading(false);
-  }, [fetchSongUrl, addToast, proxyUrl, fadeEnv]);
+  }, [fetchSongUrl, addToast, proxyUrl, fadeEnv, t]);
 
   const pauseWithFade = useCallback(() => {
     const audio = audioRef.current;
@@ -939,8 +934,8 @@ export function usePlayer(
 
   const addToQueue = useCallback((songs: Song[]) => {
     setQueue((prev) => [...prev, ...songs]);
-    addToast(`已添加 ${songs.length} 首到队列`, 'success');
-  }, [addToast]);
+    addToast(t('toast.addedQueue', { count: songs.length }), 'success');
+  }, [addToast, t]);
 
   const removeFromQueue = useCallback((index: number) => {
     setQueue((prev) => {
@@ -962,7 +957,7 @@ export function usePlayer(
 
   const cycleCrossfeed = useCallback(() => {
     if (outputModeRef.current === 'speaker') {
-      addToast('音箱外放模式下不需要交叉馈送', 'info');
+      addToast(t('toast.crossfeedNotNeeded'), 'info');
       return;
     }
     const next = CROSSFEED_ORDER[(CROSSFEED_ORDER.indexOf(crossfeedRefMode.current) + 1) % CROSSFEED_ORDER.length];
@@ -972,8 +967,9 @@ export function usePlayer(
     saveCrossfeedMode(next);
     applyCrossfeedParams(next);
     if (topologyChanges) duckThroughRebuild();
-    addToast(`耳机交叉馈送：${CROSSFEED_LABELS[next]}`, next === 'off' ? 'info' : 'success');
-  }, [applyCrossfeedParams, duckThroughRebuild, addToast]);
+    const mode = next === 'off' ? t('audio.off') : next === 'light' ? t('audio.crossfeedLight') : next === 'medium' ? t('audio.crossfeedMedium') : t('audio.crossfeedStrong');
+    addToast(t('toast.crossfeed', { mode }), next === 'off' ? 'info' : 'success');
+  }, [applyCrossfeedParams, duckThroughRebuild, addToast, t]);
 
   const toggleDeEsser = useCallback(() => {
     const next = !deEsserModeRef.current;
@@ -981,8 +977,8 @@ export function usePlayer(
     setDeEsserState(next);
     saveDeEsser(next);
     duckThroughRebuild();
-    addToast(next ? '齿音抑制 已开启' : '齿音抑制 已关闭', next ? 'success' : 'info');
-  }, [duckThroughRebuild, addToast]);
+    addToast(next ? t('toast.deEsserOn') : t('toast.deEsserOff'), next ? 'success' : 'info');
+  }, [duckThroughRebuild, addToast, t]);
 
   const toggleLoudnessComp = useCallback(() => {
     const next = !loudnessCompRef.current;
@@ -990,8 +986,8 @@ export function usePlayer(
     setLoudnessCompState(next);
     saveLoudnessComp(next);
     applyContour();
-    addToast(next ? '等响度补偿 已开启' : '等响度补偿 已关闭', next ? 'success' : 'info');
-  }, [applyContour, addToast]);
+    addToast(next ? t('toast.loudnessOn') : t('toast.loudnessOff'), next ? 'success' : 'info');
+  }, [applyContour, addToast, t]);
 
   const toggleOutputMode = useCallback(() => {
     const next: OutputMode = outputModeRef.current === 'speaker' ? 'headphone' : 'speaker';
@@ -1003,10 +999,10 @@ export function usePlayer(
     }
     duckThroughRebuild();
     addToast(
-      next === 'speaker' ? '音箱外放 已开启 · Marshall 音箱曲线' : '已切回耳机模式',
+      next === 'speaker' ? t('toast.speakerOn') : t('toast.headphoneOn'),
       next === 'speaker' ? 'success' : 'info',
     );
-  }, [duckThroughRebuild, addToast]);
+  }, [duckThroughRebuild, addToast, t]);
 
   // Rebuild the routing only when the topology actually changes. activateWebAudio
   // is a no-op resume when the shape of the graph is unchanged, so this can stay

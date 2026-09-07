@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useMemo, useRef, useEffect } from 'react';
 import { EQ_LABELS, EQ_PRESETS, EqPreset, estimatePeakBoostDb, preampGainFor } from '../hooks/useEqualizer';
 import { OutputMode } from '../utils/storage';
+import { TranslationKey, useI18n } from '../i18n';
 
 interface EqualizerProps {
   visible: boolean;
@@ -51,6 +52,7 @@ export const Equalizer = React.memo(function Equalizer({
   onSetBandGain, onReset, onSetEnabled, onSetBypassed, onApplyPreset,
   deEsser, loudnessComp, outputMode, onToggleDeEsser, onToggleLoudnessComp,
 }: EqualizerProps) {
+  const { t, locale } = useI18n();
   const [hoveredBand, setHoveredBand] = useState<number | null>(null);
   const gainsRef = useRef(gains);
   gainsRef.current = gains;
@@ -120,7 +122,7 @@ export const Equalizer = React.memo(function Equalizer({
       <div className="eq-panel" onClick={(e) => e.stopPropagation()}>
         <div className="eq-header">
           <div className="eq-title-row">
-            <h3>31 段均衡器<span className="eq-subtitle">各品牌耳机默认调音曲线</span></h3>
+            <h3>{t('eq.title')}<span className="eq-subtitle">{t('eq.subtitle')}</span></h3>
             <div className="eq-header-actions">
               <label className="eq-toggle">
                 <input
@@ -131,7 +133,7 @@ export const Equalizer = React.memo(function Equalizer({
                 <span className="eq-toggle-slider" />
                 <span className="eq-toggle-label">{enabled ? 'ON' : 'OFF'}</span>
               </label>
-              <button className="eq-reset-btn" onClick={onReset} title="重置">
+              <button className="eq-reset-btn" onClick={onReset} title={t('eq.reset')}>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
                 </svg>
@@ -143,9 +145,9 @@ export const Equalizer = React.memo(function Equalizer({
                 onPointerCancel={stopCompare}
                 onLostPointerCapture={stopCompare}
                 disabled={!enabled}
-                title="按住时临时旁路均衡器，松开即恢复；不会修改当前预设"
+                title={t('eq.compareTitle')}
               >
-                {bypassed ? '原声对比中' : '按住对比'}
+                {bypassed ? t('eq.comparing') : t('eq.compare')}
               </button>
               <button className="eq-close-btn" onClick={onClose}>
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -160,23 +162,22 @@ export const Equalizer = React.memo(function Equalizer({
                 key={p.name}
                 className={`eq-preset-btn ${preset === p.name ? 'active' : ''}`}
                 onClick={() => onApplyPreset(p.name)}
-                title={p.hint}
+                title={locale === 'zh-CN' ? p.hint : t('eq.presetHint')}
               >
-                {p.label}
+                {t(`eq.preset.${p.name}` as TranslationKey)}
               </button>
             ))}
           </div>
           <p className="eq-note">
-            以各品牌耳机出厂默认调音（相对哈曼入耳目标的偏差）拟合，用于把手上的中性耳机
-            调成该品牌的听感；同一品牌不同型号会有差异，非厂商官方曲线。
+            {t('eq.note')}
           </p>
           {enabled && (
             <div className="eq-safety">
               {bypassed
-                ? '当前为原声对比，松开后恢复均衡器。'
+                ? t('eq.bypassNotice')
                 : safety.peak > 0
-                  ? `自动预衰减 ${safety.preamp.toFixed(1)} dB，保留约 0.5 dB 削波余量。`
-                  : '当前曲线不提升增益，无需预衰减。'}
+                  ? t('eq.preampNotice', { value: safety.preamp.toFixed(1) })
+                  : t('eq.noPreampNotice')}
             </div>
           )}
           <div className="eq-switch-row">
@@ -184,19 +185,19 @@ export const Equalizer = React.memo(function Equalizer({
               className={`eq-switch ${deEsser && outputMode === 'headphone' ? 'active' : ''}`}
               onClick={onToggleDeEsser}
               disabled={outputMode === 'speaker'}
-              title="分频式齿音抑制：只压 5.5kHz 以上、且只在齿音出现时压，专治入耳耳道共振区的刺耳"
+              title={t('eq.deEsserTitle')}
             >
-              齿音抑制
+              {t('eq.deEsser')}
             </button>
             <button
               className={`eq-switch ${loudnessComp ? 'active' : ''}`}
               onClick={onToggleLoudnessComp}
-              title="等响度补偿：音量调低时按 ISO 226 自动补回低频与高频，小音量下不至于变干瘪"
+              title={t('eq.loudnessTitle')}
             >
-              等响度补偿
+              {t('eq.loudness')}
             </button>
             {outputMode === 'speaker' && (
-              <span className="eq-switch-hint">当前为音箱外放（Marshall 曲线），耳机专属处理已旁路</span>
+              <span className="eq-switch-hint">{t('eq.speakerNotice')}</span>
             )}
           </div>
         </div>

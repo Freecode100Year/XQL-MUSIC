@@ -4,6 +4,7 @@ import { PLATFORMS } from '../config';
 import { SourceStatus } from '../hooks/useSearch';
 import { getSearchHistory, clearSearchHistory } from '../utils/storage';
 import { SongList } from './SongList';
+import { useI18n } from '../i18n';
 
 interface SearchPageProps {
   results: Song[];
@@ -44,6 +45,7 @@ export function SearchPage({
   playSongInList,
   focusTrigger,
 }: SearchPageProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const history = getSearchHistory();
 
@@ -80,7 +82,7 @@ export function SearchPage({
             ref={inputRef}
             type="text"
             className="search-input"
-            placeholder="搜索歌曲、歌手..."
+            placeholder={t('search.placeholder')}
             value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
@@ -95,7 +97,7 @@ export function SearchPage({
             </button>
           )}
         </div>
-        <button type="submit" className="search-btn">搜索</button>
+        <button type="submit" className="search-btn">{t('search.submit')}</button>
       </form>
 
       <div className="platform-tabs">
@@ -105,12 +107,12 @@ export function SearchPage({
             className={`platform-tab ${platform === p.key ? 'active' : ''}`}
             onClick={() => changePlatform(p.key)}
           >
-            {p.label}
+            {p.key === 'all' ? t('source.all') : p.key === 'wy' ? t('source.wy') : p.key === 'ia' ? t('source.ia') : p.key === 'wm' ? t('source.wikimedia') : p.label}
             {p.key !== 'all' && sourceStatus[p.key] && sourceStatus[p.key] !== 'idle' && (
               <span
                 className={`source-status source-status-${sourceStatus[p.key]}`}
-                title={sourceStatus[p.key] === 'error' ? '该音源暂时不可用' : sourceStatus[p.key] === 'loading' ? '正在连接音源' : '音源连接正常'}
-                aria-label={sourceStatus[p.key] === 'error' ? '音源暂时不可用' : undefined}
+                title={sourceStatus[p.key] === 'error' ? t('search.sourceError') : sourceStatus[p.key] === 'loading' ? t('search.sourceLoading') : t('search.sourceReady')}
+                aria-label={sourceStatus[p.key] === 'error' ? t('search.sourceError') : undefined}
               />
             )}
           </button>
@@ -120,8 +122,8 @@ export function SearchPage({
       {!keyword && history.length > 0 && (
         <div className="search-history">
           <div className="search-history-header">
-            <span>搜索历史</span>
-            <button onClick={handleClearHistory}>清空</button>
+            <span>{t('search.history')}</span>
+            <button onClick={handleClearHistory}>{t('search.clear')}</button>
           </div>
           <div className="search-history-tags">
             {history.map((h) => (
@@ -149,7 +151,7 @@ export function SearchPage({
           <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor" opacity="0.3">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
           </svg>
-          <p>未找到相关结果</p>
+          <p>{t('search.none')}</p>
         </div>
       )}
     </div>

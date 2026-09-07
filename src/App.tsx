@@ -16,8 +16,10 @@ import { Equalizer } from './components/Equalizer';
 import { Toast } from './components/Toast';
 import { API, CACHE_TTL } from './config';
 import { requestCache } from './utils/cache';
+import { useI18n } from './i18n';
 
 export default function App() {
+  const { t } = useI18n();
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [showLyrics, setShowLyrics] = useState(false);
@@ -115,17 +117,17 @@ export default function App() {
           requestCache.set(cacheKey, url, CACHE_TTL.SONG_URL);
         }
       } catch {
-        addToast('获取下载地址失败', 'error');
+        addToast(t('toast.downloadFailed'), 'error');
         return;
       }
     }
     if (url) {
       window.open(url, '_blank');
-      addToast('已打开下载链接', 'success');
+      addToast(t('toast.downloadOpened'), 'success');
     } else {
-      addToast('暂无下载地址', 'error');
+      addToast(t('toast.downloadUnavailable'), 'error');
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   const handleSearchFocus = useCallback(() => {
     setCurrentPage('search');

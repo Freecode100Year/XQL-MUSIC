@@ -1,12 +1,6 @@
 import { Page } from '../types';
 import { CrossfeedMode, OutputMode } from '../utils/storage';
-
-const CROSSFEED_LABELS: Record<CrossfeedMode, string> = {
-  off: '关',
-  light: '轻',
-  medium: '中',
-  strong: '强',
-};
+import { useI18n } from '../i18n';
 
 interface SidebarProps {
   currentPage: Page;
@@ -30,6 +24,11 @@ export function Sidebar({
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
   onCycleCrossfeed, onToggleOutput, onShowEqualizer,
 }: SidebarProps) {
+  const { t } = useI18n();
+  const crossfeedLabels: Record<CrossfeedMode, string> = {
+    off: t('audio.off'), light: t('audio.crossfeedLight'),
+    medium: t('audio.crossfeedMedium'), strong: t('audio.crossfeedStrong'),
+  };
   const navigate = (page: Page) => {
     setPage(page);
     setMobileOpen(false);
@@ -61,7 +60,7 @@ export function Sidebar({
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
             </svg>
-            <span>发现音乐</span>
+            <span>{t('nav.home')}</span>
           </button>
           <button
             className={`sidebar-item ${currentPage === 'search' ? 'active' : ''}`}
@@ -70,15 +69,15 @@ export function Sidebar({
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
-            <span>搜索</span>
+            <span>{t('nav.search')}</span>
           </button>
 
-          <section className="sidebar-audio-controls" aria-label="播放设置">
-            <div className="sidebar-audio-title">播放设置</div>
+          <section className="sidebar-audio-controls" aria-label={t('audio.settings')}>
+            <div className="sidebar-audio-title">{t('audio.settings')}</div>
 
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
-                <span>音量增强</span>
+                <span>{t('audio.gain')}</span>
                 <strong>{gainMultiplier.toFixed(1)}x</strong>
               </span>
               <input
@@ -88,7 +87,7 @@ export function Sidebar({
                 step="0.1"
                 value={gainMultiplier}
                 onChange={(event) => onSetGainMultiplier(parseFloat(event.target.value))}
-                aria-label="音量增强倍数"
+                aria-label={t('audio.gainLabel')}
               />
             </label>
 
@@ -96,33 +95,33 @@ export function Sidebar({
               className="sidebar-audio-button"
               onClick={onCycleCrossfeed}
               disabled={outputMode === 'speaker'}
-              title={outputMode === 'speaker' ? '音箱外放时无需交叉馈送' : '点击切换关、轻、中、强'}
+              title={outputMode === 'speaker' ? t('audio.crossfeedUnavailable') : t('audio.crossfeedCycle')}
             >
-              <span>耳机交叉馈送</span>
-              <strong>{outputMode === 'speaker' ? '不适用' : CROSSFEED_LABELS[crossfeedMode]}</strong>
+              <span>{t('audio.crossfeed')}</span>
+              <strong>{outputMode === 'speaker' ? t('audio.na') : crossfeedLabels[crossfeedMode]}</strong>
             </button>
 
             <button
               className={`sidebar-audio-button ${outputMode === 'speaker' ? 'active' : ''}`}
               onClick={onToggleOutput}
-              title="点击切换耳机与音箱外放模式"
+              title={t('audio.outputToggle')}
             >
-              <span>音箱外放</span>
-              <strong>{outputMode === 'speaker' ? '开' : '关'}</strong>
+              <span>{t('audio.speaker')}</span>
+              <strong>{outputMode === 'speaker' ? t('audio.on') : t('audio.off')}</strong>
             </button>
 
             <button
               className={`sidebar-audio-button ${eqEnabled ? 'active' : ''}`}
               onClick={onShowEqualizer}
-              title="打开均衡器设置"
+              title={t('audio.eqOpen')}
             >
-              <span>均衡器</span>
-              <strong>{eqEnabled ? '开' : '设置'}</strong>
+              <span>{t('audio.equalizer')}</span>
+              <strong>{eqEnabled ? t('audio.on') : t('audio.setup')}</strong>
             </button>
 
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
-                <span>音量</span>
+                <span>{t('audio.volume')}</span>
                 <strong>{Math.round(volume * 100)}%</strong>
               </span>
               <input
@@ -132,7 +131,7 @@ export function Sidebar({
                 step="0.01"
                 value={volume}
                 onChange={(event) => onSetVolume(parseFloat(event.target.value))}
-                aria-label="播放音量"
+                aria-label={t('audio.volumeLabel')}
               />
             </label>
           </section>
