@@ -130,6 +130,7 @@ a {
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1936,6 +1937,20 @@ a {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     width: 240px;
+    height: 100dvh;
+    bottom: auto;
+    box-sizing: border-box;
+    overflow: hidden;
+    z-index: 300;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .sidebar-nav {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding-bottom: 24px;
   }
 
   .sidebar-open {
