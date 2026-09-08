@@ -278,8 +278,16 @@ export function useEqualizer() {
     applyPreamp(stored, active);
   }, [enabled, applyPreamp]);
 
+  const setCurve = useCallback((values: number[], on: boolean) => {
+    const curve = Array.from({ length: 31 }, (_, i) => Number.isFinite(values[i]) ? Math.max(-20, Math.min(20, values[i])) : 0);
+    setGains(curve); saveEqGains(curve); setPresetState('custom'); saveEqPreset('custom');
+    setEnabled(on); saveEqEnabled(on); setBypassedState(false); bypassRef.current = false;
+    filtersRef.current.forEach((f, i) => { f.gain.value = on ? curve[i] : 0; });
+    applyPreamp(curve, on);
+  }, [setEnabled, applyPreamp]);
+
   return {
     gains, enabled, bypassed, preset, filtersRef, preampRef,
-    createFilters, createPreamp, setBandGain, reset, setEnabled, setBypassed, applyPreset,
+    createFilters, createPreamp, setBandGain, reset, setEnabled, setBypassed, applyPreset, setCurve,
   };
 }

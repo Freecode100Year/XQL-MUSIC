@@ -25,6 +25,8 @@ interface LayoutProps {
   onCycleCrossfeed: () => void;
   onToggleOutput: () => void;
   onShowEqualizer: () => void;
+  onShowAudioStudio: () => void;
+  processingEnabled: boolean;
   onToggleStereoWide: () => void;
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
@@ -41,6 +43,7 @@ export function Layout({
   balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
+  onShowAudioStudio, processingEnabled,
 }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -67,6 +70,8 @@ export function Layout({
         onCycleCrossfeed={onCycleCrossfeed}
         onToggleOutput={onToggleOutput}
         onShowEqualizer={onShowEqualizer}
+        onShowAudioStudio={onShowAudioStudio}
+        processingEnabled={processingEnabled}
         onToggleStereoWide={onToggleStereoWide}
         onToggleMono={onToggleMono}
         onSetBalance={onSetBalance}

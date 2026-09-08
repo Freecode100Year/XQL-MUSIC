@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Page, Song, ToastMessage } from './types';
 import { generateId } from './utils/format';
 import { usePlayer } from './hooks/usePlayer';
@@ -17,6 +17,7 @@ import { Toast } from './components/Toast';
 import { API, CACHE_TTL } from './config';
 import { requestCache } from './utils/cache';
 import { useI18n } from './i18n';
+import { AudioStudio } from './components/AudioStudio';
 
 export default function App() {
   const { t } = useI18n();
@@ -25,6 +26,9 @@ export default function App() {
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
+  const [showAudioStudio, setShowAudioStudio] = useState(false);
+  const closeAudioStudio = useCallback(() => setShowAudioStudio(false), []);
+  const openEqualizer = useCallback(() => setShowEqualizer(true), []);
   const [searchFocusTrigger, setSearchFocusTrigger] = useState(0);
 
   const addToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -45,6 +49,18 @@ export default function App() {
     [eq.filtersRef, eq.preampRef, eq.createFilters, eq.createPreamp],
   );
   const player = usePlayer(addToast, eqBridge);
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return;
+      if (event.code === 'KeyU') { event.preventDefault(); setShowAudioStudio(v => !v); }
+      if (event.code === 'KeyS') { event.preventDefault(); player.setProcessingEnabled(!player.processingEnabled); }
+      if (event.code === 'ArrowUp' || event.code === 'ArrowDown') {
+        event.preventDefault(); player.setGainMultiplier(player.gainMultiplier + (event.code === 'ArrowUp' ? 0.05 : -0.05));
+      }
+    };
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, [player.setProcessingEnabled, player.processingEnabled, player.setGainMultiplier, player.gainMultiplier]);
   const searchHook = useSearch();
 
   const { lyrics, currentLineIndex } = useLyrics(player.currentSong, player.currentTime);
@@ -173,6 +189,8 @@ export default function App() {
         onCycleCrossfeed={player.cycleCrossfeed}
         onToggleOutput={player.toggleOutputMode}
         onShowEqualizer={() => setShowEqualizer(true)}
+        onShowAudioStudio={() => setShowAudioStudio(true)}
+        processingEnabled={player.processingEnabled}
         onToggleStereoWide={player.toggleStereoWide}
         onToggleMono={player.toggleMono}
         onSetBalance={player.setBalance}
@@ -271,6 +289,7 @@ export default function App() {
         onToggleLoudnessComp={player.toggleLoudnessComp}
       />
 
+      {showAudioStudio && <AudioStudio player={player} eq={eq} onClose={closeAudioStudio} onOpenEqualizer={openEqualizer} />}
       <Toast toasts={toasts} removeToast={removeToast} />
     </>
   );

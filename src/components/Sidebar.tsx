@@ -23,6 +23,8 @@ interface SidebarProps {
   onCycleCrossfeed: () => void;
   onToggleOutput: () => void;
   onShowEqualizer: () => void;
+  onShowAudioStudio: () => void;
+  processingEnabled: boolean;
   onToggleStereoWide: () => void;
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
@@ -39,6 +41,7 @@ export function Sidebar({
   balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
+  onShowAudioStudio, processingEnabled,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -90,6 +93,10 @@ export function Sidebar({
 
           <section className="sidebar-audio-controls" aria-label={t('audio.settings')}>
             <div className="sidebar-audio-title">{t('audio.settings')}</div>
+            <button className="sidebar-audio-button active" onClick={onShowAudioStudio}>
+              <span>{t('studio.open')}</span><strong>›</strong>
+            </button>
+            {!processingEnabled && <p className="sidebar-studio-hint">{t('studio.native')}</p>}
 
             <label className="sidebar-range-control">
               <span className="sidebar-control-header">
@@ -98,9 +105,9 @@ export function Sidebar({
               </span>
               <input
                 type="range"
-                min="1"
+                min="0"
                 max="3"
-                step="0.1"
+                step="0.01"
                 value={gainMultiplier}
                 onChange={(event) => onSetGainMultiplier(parseFloat(event.target.value))}
                 aria-label={t('audio.gainLabel')}

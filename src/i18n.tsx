@@ -5,6 +5,7 @@ export type Locale = 'zh-CN' | 'en';
 const messages = {
   'zh-CN': {
     'site.title': 'XQL MUSIC - 全网音乐聚合',
+    'studio.open': '完整音频增强器', 'studio.native': '当前为锁屏优先播放；打开增强器启用音效后，音效调节才生效。',
     'nav.home': '发现音乐', 'nav.search': '搜索',
     'audio.settings': '播放设置', 'audio.gain': '预放大（输入）', 'audio.crossfeed': '耳机交叉馈送',
     'audio.speaker': '音箱外放', 'audio.equalizer': '均衡器', 'audio.volume': '音量',
@@ -55,6 +56,7 @@ const messages = {
   },
   en: {
     'site.title': 'XQL MUSIC - Music Search',
+    'studio.open': 'Full audio enhancer', 'studio.native': 'Lock-screen priority. Open the enhancer and enable effects to hear audio adjustments.',
     'nav.home': 'Discover', 'nav.search': 'Search',
     'audio.settings': 'PLAYBACK SETTINGS', 'audio.gain': 'Input preamp', 'audio.crossfeed': 'Headphone crossfeed',
     'audio.speaker': 'Speaker output', 'audio.equalizer': 'Equalizer', 'audio.volume': 'Volume',
@@ -111,7 +113,7 @@ type TranslationValues = Record<string, string | number>;
 export function detectDeviceLocale(): Locale {
   if (typeof navigator === 'undefined') return 'en';
   const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
-  return languages.some((language) => language.toLowerCase().startsWith('zh')) ? 'zh-CN' : 'en';
+  return languages[0]?.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en';
 }
 
 function translate(locale: Locale, key: TranslationKey, values: TranslationValues = {}): string {

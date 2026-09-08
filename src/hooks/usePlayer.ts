@@ -18,6 +18,9 @@ import {
   getVirtual8dDepth, setVirtual8dDepth as saveVirtual8dDepth,
 } from '../utils/storage';
 import { useI18n } from '../i18n';
+import { AdvancedSettings, loadAdvanced, saveAdvanced, sanitizeAdvanced, SYSTEMS } from '../audio/settings';
+import { AdvancedAudio } from '../audio/advanced';
+import { SpatialOrbit } from '../audio/orbit';
 
 interface EqualizerBridge {
   filtersRef: React.MutableRefObject<BiquadFilterNode[]>;
@@ -156,13 +159,15 @@ export function usePlayer(
     rightDirect: GainNode;
     rightCross: GainNode;
   } | null>(null);
-  const virtual8dRef = useRef<{
-    input: GainNode;
-    output: GainNode;
-    panner: StereoPannerNode;
-    lfoDepth: GainNode;
-    oscillator: OscillatorNode;
-  } | null>(null);
+  const virtual8dRef = useRef<SpatialOrbit | null>(null);
+  const advancedRef = useRef<AdvancedAudio | null>(null);
+  const [advanced, setAdvancedState] = useState(loadAdvanced);
+  const advancedSettingsRef = useRef(advanced);
+  const processingRef = useRef(!needsNativeBackgroundAudio());
+  const [processingEnabled, setProcessingState] = useState(processingRef.current);
+  const [audioRevision, setAudioRevision] = useState(0);
+  const [hardwareChannels, setHardwareChannels] = useState(2);
+  const [activeChannels, setActiveChannels] = useState(2);
   const loudnessGainRef = useRef<GainNode | null>(null);
   const meterRef = useRef<{ shelf: BiquadFilterNode; hp: BiquadFilterNode; analyser: AnalyserNode } | null>(null);
   const loudnessTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -514,20 +519,8 @@ export function usePlayer(
   // the image crosses the centre.
   const ensureVirtual8dNodes = useCallback((ctx: AudioContext) => {
     if (virtual8dRef.current) return virtual8dRef.current;
-    const input = ctx.createGain();
-    const panner = ctx.createStereoPanner();
-    const output = ctx.createGain();
-    const oscillator = ctx.createOscillator();
-    const lfoDepth = ctx.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.value = virtual8dSpeedRef.current;
-    lfoDepth.gain.value = virtual8dDepthRef.current;
-    oscillator.connect(lfoDepth);
-    lfoDepth.connect(panner.pan);
-    input.connect(panner);
-    panner.connect(output);
-    oscillator.start();
-    virtual8dRef.current = { input, output, panner, lfoDepth, oscillator };
+    virtual8dRef.current = new SpatialOrbit(ctx);
+    virtual8dRef.current.update(virtual8dSpeedRef.current, virtual8dDepthRef.current, advancedSettingsRef.current.trajectory);
     return virtual8dRef.current;
   }, []);
 
@@ -594,7 +587,7 @@ export function usePlayer(
     // Do not connect a mobile media element to AudioContext. See
     // needsNativeBackgroundAudio: a native element can continue through a
     // phone/tablet lock screen, whereas Web Audio is commonly suspended.
-    if (needsNativeBackgroundAudio()) return;
+    if (!processingRef.current) return;
 
     let ctx = audioCtxRef.current;
     if (!ctx) {
@@ -602,6 +595,7 @@ export function usePlayer(
       // 31-band chain from glitching on a phone.
       ctx = new AudioContext({ latencyHint: 'playback' });
       audioCtxRef.current = ctx;
+      setHardwareChannels(ctx.destination.maxChannelCount || 2);
     }
 
     if (!sourceNodeRef.current) {
@@ -623,6 +617,8 @@ export function usePlayer(
     }
 
     const source = sourceNodeRef.current;
+    const studio = advancedRef.current || (advancedRef.current = new AdvancedAudio(ctx));
+    studio.update(advancedSettingsRef.current);
     const eq = equalizerRef.current;
     const highpass = ensureHighpass(ctx);
     const gainNode = ensureGainNode(ctx);
@@ -647,11 +643,14 @@ export function usePlayer(
     if (spatialRef.current) disconnectSafe(spatialRef.current.output);
     if (virtual8dRef.current) disconnectSafe(virtual8dRef.current.output);
     if (nightCompressorRef.current) disconnectSafe(nightCompressorRef.current);
+    disconnectSafe(studio.output);
 
     // source -> subsonic -> EQ -> EQ preamp -> [voicing | de-esser]
     //        -> [crossfeed] -> loudness -> contour -> user gain -> volume
     //        -> fade envelope -> limiter -> out
-    source.connect(highpass);
+    source.connect(gainNode);
+    gainNode.connect(studio.input);
+    studio.output.connect(highpass);
     highpass.connect(eqFirst);
     eqLast.connect(eqPreamp);
 
@@ -690,11 +689,11 @@ export function usePlayer(
 
     tail.connect(loudnessGain);
     loudnessGain.connect(contour.low);
-    contour.high.connect(gainNode);
-    gainNode.connect(volumeGain);
+    contour.high.connect(volumeGain);
     volumeGain.connect(envGain);
-    envGain.connect(limiter);
-    limiter.connect(ctx.destination);
+    const destinationTail = advancedSettingsRef.current.limiter ? limiter : envGain;
+    if (advancedSettingsRef.current.limiter) envGain.connect(limiter);
+    setActiveChannels(studio.connectDestination(destinationTail, advancedSettingsRef.current, ctx.destination.maxChannelCount || 2));
 
     // Measurement tap, ahead of the volume control so the leveller cannot end up
     // fighting the user's own volume changes. An analyser has no effect on what
@@ -709,6 +708,7 @@ export function usePlayer(
     applyCrossfeedParams(useCrossfeed ? crossfeedRefMode.current : 'off');
     applySpatialParams(spatialModeRef.current, balanceRef.current);
     applyContour();
+    virtual8dRef.current?.update(virtual8dSpeedRef.current, virtual8dDepthRef.current, advancedSettingsRef.current.trajectory);
 
     webAudioActiveRef.current = true;
     topologyRef.current = topology;
@@ -720,6 +720,78 @@ export function usePlayer(
     applyCrossfeedParams, applySpatialParams, applyContour, nightMode,
     virtual8d,
   ]);
+
+  const setAdvanced = useCallback((patch: Partial<AdvancedSettings>) => {
+    const next = sanitizeAdvanced({ ...advancedSettingsRef.current, ...patch });
+    advancedSettingsRef.current = next;
+    setAdvancedState(next); saveAdvanced(next);
+    advancedRef.current?.update(next);
+    virtual8dRef.current?.update(virtual8dSpeedRef.current, virtual8dDepthRef.current, next.trajectory);
+    // Only channel wiring changes require rebuilding; sliders update AudioParams.
+    const routingKeys = ['system', 'routing', 'rearAmbience', 'rearDirect', 'rearInvert', 'splitBass', 'limiter'];
+    if (routingKeys.some(key => key in patch)) {
+      topologyRef.current = null;
+      activateWebAudio();
+    }
+  }, [activateWebAudio]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: light)');
+    const sync = () => { document.documentElement.dataset.theme = advanced.theme === 'auto' ? (media.matches ? 'light' : 'dark') : advanced.theme; };
+    sync(); media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, [advanced.theme]);
+
+  const setProcessingEnabled = useCallback((enabled: boolean) => {
+    processingRef.current = enabled;
+    setProcessingState(enabled);
+    if (enabled) {
+      try { activateWebAudio(); } catch {
+        processingRef.current = false; setProcessingState(false);
+        addToast(t('toast.playFailed'), 'error');
+      }
+      return;
+    }
+    // A MediaElementSource attachment cannot be undone. Use a new native media
+    // element to restore mobile lock-screen playback, preserving track/position.
+    const old = audioRef.current;
+    if (!old || !sourceNodeRef.current) return;
+    const resume = !old.paused;
+    const position = old.currentTime;
+    old.pause();
+    const replacement = new Audio();
+    replacement.crossOrigin = 'anonymous'; replacement.preload = 'auto';
+    replacement.setAttribute('playsinline', '');
+    replacement.volume = volumeRef.current ** 2;
+    replacement.addEventListener('loadedmetadata', () => { if (Number.isFinite(position)) replacement.currentTime = position; }, { once: true });
+    if (old.getAttribute('src')) replacement.src = old.src;
+    audioRef.current = replacement;
+    sourceNodeRef.current.disconnect(); sourceNodeRef.current = null;
+    old.removeAttribute('src'); old.load();
+    webAudioActiveRef.current = false; topologyRef.current = null;
+    audioCtxRef.current?.suspend().catch(() => {});
+    setAudioRevision(n => n + 1);
+    if (resume) replacement.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+  }, [activateWebAudio, addToast, t]);
+
+  const getAudioMetrics = useCallback(() => {
+    if (!processingRef.current || audioCtxRef.current?.state !== 'running') return null;
+    return advancedRef.current?.measure(advancedSettingsRef.current) || null;
+  }, []);
+
+  const testChannel = useCallback((channel: number) => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || channel < 0 || channel >= ctx.destination.channelCount) return;
+    const oscillator = ctx.createOscillator(); oscillator.frequency.value = 220;
+    const gain = ctx.createGain(); gain.gain.value = 0;
+    const merger = ctx.createChannelMerger(ctx.destination.channelCount);
+    oscillator.connect(gain); gain.connect(merger, 0, channel); merger.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.025, now + 0.04);
+    gain.gain.setValueAtTime(0.025, now + 0.35); gain.gain.linearRampToValueAtTime(0, now + 0.45);
+    oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); merger.disconnect(); };
+    ctx.resume().catch(() => {}); oscillator.start(); oscillator.stop(now + 0.5);
+  }, []);
 
   // Walk loudnessGain towards a common level. Deliberately slow (3 s time
   // constant over a 3 s measurement window, +/-7 dB of authority) so it levels
@@ -737,7 +809,9 @@ export function usePlayer(
       const meter = meterRef.current;
       const gain = loudnessGainRef.current;
       const ctx = audioCtxRef.current;
-      if (!meter || !gain || !ctx || !isPlaying) return;
+      if (!meter || !gain || !ctx || !isPlaying || !processingRef.current) return;
+      if (advancedSettingsRef.current.smartMono) advancedRef.current?.measure(advancedSettingsRef.current);
+      if (!advancedSettingsRef.current.normalize) { gain.gain.setTargetAtTime(1, ctx.currentTime, 0.2); return; }
 
       const buf = new Float32Array(meter.analyser.fftSize);
       meter.analyser.getFloatTimeDomainData(buf);
@@ -816,7 +890,7 @@ export function usePlayer(
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('error', onError);
     };
-  }, [addToast, fadeEnv, t]);
+  }, [addToast, fadeEnv, t, audioRevision]);
 
   const fetchSongUrl = useCallback(async (song: Song): Promise<string | null> => {
     const cacheKey = `song_url_${song.sourceType}_${song.source}_${song.id}`;
@@ -996,7 +1070,7 @@ export function usePlayer(
   }, []);
 
   const setGainMultiplier = useCallback((gain: number) => {
-    const next = Math.max(1, Math.min(3, Number.isFinite(gain) ? gain : 1));
+    const next = Math.max(0, Math.min(3, Number.isFinite(gain) ? gain : 1));
     setGainMultiplierState(next);
     gainMultiplierRef.current = next;
     saveGainMultiplier(next);
@@ -1050,7 +1124,7 @@ export function usePlayer(
     setVirtual8dSpeedState(next);
     saveVirtual8dSpeed(next);
     const ctx = audioCtxRef.current;
-    virtual8dRef.current?.oscillator.frequency.setTargetAtTime(next, ctx?.currentTime || 0, 0.08);
+    virtual8dRef.current?.update(next, virtual8dDepthRef.current, advancedSettingsRef.current.trajectory);
   }, []);
 
   const setVirtual8dDepth = useCallback((value: number) => {
@@ -1059,7 +1133,7 @@ export function usePlayer(
     setVirtual8dDepthState(next);
     saveVirtual8dDepth(next);
     const ctx = audioCtxRef.current;
-    virtual8dRef.current?.lfoDepth.gain.setTargetAtTime(next, ctx?.currentTime || 0, 0.08);
+    virtual8dRef.current?.update(virtual8dSpeedRef.current, next, advancedSettingsRef.current.trajectory);
   }, []);
 
   const playNext = useCallback(() => {
@@ -1120,7 +1194,7 @@ export function usePlayer(
     };
     audio.addEventListener('ended', onEnded);
     return () => audio.removeEventListener('ended', onEnded);
-  }, [playMode, playNext, fadeEnv]);
+  }, [playMode, playNext, fadeEnv, audioRevision]);
 
   const addToQueue = useCallback((songs: Song[]) => {
     setQueue((prev) => [...prev, ...songs]);
@@ -1160,6 +1234,11 @@ export function usePlayer(
     const mode = next === 'off' ? t('audio.off') : next === 'light' ? t('audio.crossfeedLight') : next === 'medium' ? t('audio.crossfeedMedium') : t('audio.crossfeedStrong');
     addToast(t('toast.crossfeed', { mode }), next === 'off' ? 'info' : 'success');
   }, [applyCrossfeedParams, duckThroughRebuild, addToast, t]);
+
+  const setCrossfeed = useCallback((mode: CrossfeedMode) => {
+    crossfeedRefMode.current = mode; setCrossfeedModeState(mode); saveCrossfeedMode(mode);
+    applyCrossfeedParams(mode);
+  }, [applyCrossfeedParams]);
 
   const toggleDeEsser = useCallback(() => {
     const next = !deEsserModeRef.current;
@@ -1278,6 +1357,8 @@ export function usePlayer(
 
   return {
     currentSong,
+    advanced, setAdvanced, processingEnabled, setProcessingEnabled,
+    hardwareChannels, activeChannels, getAudioMetrics, testChannel,
     songDetail,
     isPlaying,
     currentTime,
@@ -1312,6 +1393,7 @@ export function usePlayer(
     setVirtual8dSpeed,
     setVirtual8dDepth,
     cycleCrossfeed,
+    setCrossfeed,
     toggleDeEsser,
     toggleLoudnessComp,
     toggleOutputMode,
