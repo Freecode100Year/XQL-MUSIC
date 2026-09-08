@@ -97,6 +97,11 @@ export class AdvancedAudio {
     const split = track(this.ctx.createChannelSplitter(2));
     tail.connect(split);
     const merge = track(this.ctx.createChannelMerger(count));
+    const ceilingCurve = () => {
+      const curve = new Float32Array(4097);
+      for (let i = 0; i < curve.length; i++) curve[i] = Math.max(-0.97, Math.min(0.97, i / 2048 - 1));
+      return curve;
+    };
     const source = (left: number, right: number) => {
       const mix = track(this.ctx.createGain());
       [left, right].forEach((value, i) => {
@@ -105,7 +110,11 @@ export class AdvancedAudio {
       });
       return mix;
     };
-    const outputs = count === 2 ? ['FL', 'FR'] : [...names];
+    // Always build every selected logical channel. When the sound device only
+    // exposes stereo, those channels are folded into a safe virtual stereo
+    // image instead of disabling the surround choices in the interface.
+    const outputs = [...names];
+    const virtualStereo = count === 2 && names.length > 2;
     outputs.forEach((name, index) => {
       const right = name.endsWith('R');
       let node: AudioNode;
@@ -136,17 +145,34 @@ export class AdvancedAudio {
         // Hard ceiling after channel gains: unlike a stereo compressor this
         // preserves every discrete output channel and cannot silently downmix.
         const ceiling = track(this.ctx.createWaveShaper());
-        const curve = new Float32Array(4097);
-        for (let i = 0; i < curve.length; i++) curve[i] = Math.max(-0.97, Math.min(0.97, i / 2048 - 1));
-        ceiling.curve = curve; ceiling.oversample = 'none';
+        ceiling.curve = ceilingCurve(); ceiling.oversample = 'none';
         node.connect(ceiling); node = ceiling;
       }
       const analyser = track(this.ctx.createAnalyser()); analyser.fftSize = 2048;
       node.connect(analyser); this.outputMeters.push(analyser);
       const target = settings.routing[index];
-      if (target >= 0 && target < count) analyser.connect(merge, 0, target);
+      if (target < 0) return;
+      if (!virtualStereo) {
+        if (target < count) analyser.connect(merge, 0, target);
+        return;
+      }
+      const targetName = names[target] || name;
+      const connectVirtual = (output: number, level: number) => {
+        const fold = track(this.ctx.createGain()); fold.gain.value = level;
+        analyser.connect(fold); fold.connect(merge, 0, output);
+      };
+      if (targetName === 'C') { connectVirtual(0, 0.32); connectVirtual(1, 0.32); }
+      else if (targetName.startsWith('LFE')) { connectVirtual(0, 0.2); connectVirtual(1, 0.2); }
+      else if (targetName.endsWith('R')) connectVirtual(1, targetName === 'FR' ? 0.58 : 0.26);
+      else connectVirtual(0, targetName === 'FL' ? 0.58 : 0.26);
     });
-    merge.connect(this.ctx.destination);
+    if (virtualStereo && settings.limiter) {
+      const masterCeiling = track(this.ctx.createWaveShaper());
+      masterCeiling.curve = ceilingCurve(); masterCeiling.oversample = 'none';
+      merge.connect(masterCeiling).connect(this.ctx.destination);
+    } else {
+      merge.connect(this.ctx.destination);
+    }
     return count;
   }
   measure(settings: AdvancedSettings): AudioMetrics {

@@ -607,8 +607,8 @@ export function usePlayer(
     }
 
     const isSpeaker = outputModeRef.current === 'speaker';
-    const useCrossfeed = !isSpeaker && crossfeedRefMode.current !== 'off';
-    const useDeEsser = !isSpeaker && deEsserModeRef.current;
+    const useCrossfeed = crossfeedRefMode.current !== 'off';
+    const useDeEsser = deEsserModeRef.current;
     const topology = `${isSpeaker ? 'spk' : 'hp'}|${useCrossfeed ? 'cf' : '-'}|${useDeEsser ? 'de' : '-'}|${virtual8d ? '8d' : '-'}|${nightMode ? 'night' : '-'}`;
 
     if (webAudioActiveRef.current && topologyRef.current === topology) {
@@ -645,7 +645,7 @@ export function usePlayer(
     if (nightCompressorRef.current) disconnectSafe(nightCompressorRef.current);
     disconnectSafe(studio.output);
 
-    // source -> subsonic -> EQ -> EQ preamp -> [voicing | de-esser]
+    // source -> subsonic -> EQ -> EQ preamp -> [voicing] -> [de-esser]
     //        -> [crossfeed] -> loudness -> contour -> user gain -> volume
     //        -> fade envelope -> limiter -> out
     source.connect(gainNode);
@@ -659,7 +659,8 @@ export function usePlayer(
       const voicing = ensureVoicingNodes(ctx);
       tail.connect(voicing.input);
       tail = voicing.output;
-    } else if (useDeEsser) {
+    }
+    if (useDeEsser) {
       const de = ensureDeEsserNodes(ctx);
       tail.connect(de.input);
       tail = de.output;
@@ -779,13 +780,15 @@ export function usePlayer(
     return advancedRef.current?.measure(advancedSettingsRef.current) || null;
   }, []);
 
-  const testChannel = useCallback((channel: number) => {
+  const testChannel = useCallback((channel: number | number[]) => {
     const ctx = audioCtxRef.current;
-    if (!ctx || channel < 0 || channel >= ctx.destination.channelCount) return;
+    if (!ctx) return;
+    const channels = (Array.isArray(channel) ? channel : [channel]).filter(value => value >= 0 && value < ctx.destination.channelCount);
+    if (!channels.length) return;
     const oscillator = ctx.createOscillator(); oscillator.frequency.value = 220;
     const gain = ctx.createGain(); gain.gain.value = 0;
     const merger = ctx.createChannelMerger(ctx.destination.channelCount);
-    oscillator.connect(gain); gain.connect(merger, 0, channel); merger.connect(ctx.destination);
+    oscillator.connect(gain); channels.forEach(value => gain.connect(merger, 0, value)); merger.connect(ctx.destination);
     const now = ctx.currentTime;
     gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.025, now + 0.04);
     gain.gain.setValueAtTime(0.025, now + 0.35); gain.gain.linearRampToValueAtTime(0, now + 0.45);
@@ -1220,10 +1223,6 @@ export function usePlayer(
   }, []);
 
   const cycleCrossfeed = useCallback(() => {
-    if (outputModeRef.current === 'speaker') {
-      addToast(t('toast.crossfeedNotNeeded'), 'info');
-      return;
-    }
     const next = CROSSFEED_ORDER[(CROSSFEED_ORDER.indexOf(crossfeedRefMode.current) + 1) % CROSSFEED_ORDER.length];
     const topologyChanges = (crossfeedRefMode.current === 'off') !== (next === 'off');
     crossfeedRefMode.current = next;

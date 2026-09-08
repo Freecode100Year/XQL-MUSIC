@@ -182,9 +182,8 @@ export const Equalizer = React.memo(function Equalizer({
           )}
           <div className="eq-switch-row">
             <button
-              className={`eq-switch ${deEsser && outputMode === 'headphone' ? 'active' : ''}`}
+              className={`eq-switch ${deEsser ? 'active' : ''}`}
               onClick={onToggleDeEsser}
-              disabled={outputMode === 'speaker'}
               title={t('eq.deEsserTitle')}
             >
               {t('eq.deEsser')}

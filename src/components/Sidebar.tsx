@@ -117,11 +117,10 @@ export function Sidebar({
             <button
               className="sidebar-audio-button"
               onClick={onCycleCrossfeed}
-              disabled={outputMode === 'speaker'}
-              title={outputMode === 'speaker' ? t('audio.crossfeedUnavailable') : t('audio.crossfeedCycle')}
+              title={t('audio.crossfeedCycle')}
             >
               <span>{t('audio.crossfeed')}</span>
-              <strong>{outputMode === 'speaker' ? t('audio.na') : crossfeedLabels[crossfeedMode]}</strong>
+              <strong>{crossfeedLabels[crossfeedMode]}</strong>
             </button>
 
             <button

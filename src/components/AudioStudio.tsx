@@ -197,7 +197,7 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
           <p>{tx('设备报告最大声道数：', 'Reported hardware channels: ')}{p.hardwareChannels} · {tx('当前输出：', 'Current output: ')}{p.activeChannels}</p>
           <p className="studio-hint">{tx('环绕声由立体声上混生成。HDMI / SPDIF 的实际输出取决于系统和接收器；网页不能强制突破设备报告的声道数。', 'Surround is upmixed from stereo. HDMI / SPDIF output depends on your system and receiver; the website cannot override reported hardware limits.')}</p>
           <label>{tx('音频系统', 'Audio system')}<select value={a.system} onChange={e => { put({ system: e.target.value as System }); if (p.virtual8d && e.target.value !== '2.0') p.toggleVirtual8d(); }}>
-            {Object.entries(SYSTEMS).map(([system, channels]) => <option key={system} value={system} disabled={channels.length > p.hardwareChannels}>{system} — {channels.length} {tx('声道', 'channels')}{channels.length > p.hardwareChannels ? tx('（设备不支持）', ' (unavailable)') : ''}</option>)}
+            {Object.entries(SYSTEMS).map(([system, channels]) => <option key={system} value={system}>{system} — {channels.length} {tx('声道', 'channels')}{channels.length > p.hardwareChannels ? tx('（自动虚拟成立体声）', ' (virtual stereo fallback)') : ''}</option>)}
           </select></label>
           <p className="studio-hint">{tx('先启用音效以检测声卡。测试音为短促低音量提示；每行对应一个物理输出。', 'Enable effects to detect hardware. Test tones are brief and quiet. Each row maps to a physical output.')}</p>
           {SYSTEMS[a.system].map((channel, i) => <section className="studio-card" key={channel}>
@@ -207,7 +207,11 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
               const other = target < 0 ? -1 : routing.findIndex((v, j) => j !== i && v === target);
               if (other >= 0) routing[other] = routing[i]; routing[i] = target; put({ routing });
             }}><option value={-1}>{tx('静音 / 不分配', 'Mute / unassigned')}</option>{SYSTEMS[a.system].map((name, j) => <option key={j} value={j}>{j + 1} · {name}</option>)}</select></label>
-            <button className="studio-secondary" disabled={!p.processingEnabled || a.routing[i] < 0 || a.routing[i] >= p.activeChannels} onClick={() => p.testChannel(a.routing[i])}>{tx('测试这个输出', 'Test this output')}</button>
+            <button className="studio-secondary" disabled={!p.processingEnabled || a.routing[i] < 0} onClick={() => {
+              const routedName = SYSTEMS[a.system][a.routing[i]] || channel;
+              const targets = p.activeChannels > 2 ? [a.routing[i]] : routedName === 'C' || routedName.startsWith('LFE') ? [0, 1] : [routedName.endsWith('R') ? 1 : 0];
+              p.testChannel(targets);
+            }}>{tx('测试这个输出', 'Test this output')}</button>
           </section>)}
           <button className="studio-secondary" onClick={() => put({ routing: [...DEFAULT_ADVANCED.routing], channelGains: [...DEFAULT_ADVANCED.channelGains] })}>{tx('重置路由与声道音量', 'Reset routing and channel levels')}</button>
           <h3>{tx('中置与低音炮滤波', 'Center / subwoofer filters')}</h3>
