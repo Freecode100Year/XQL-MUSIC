@@ -191,7 +191,6 @@ export default function App() {
         onShowEqualizer={() => setShowEqualizer(true)}
         onShowAudioStudio={() => setShowAudioStudio(true)}
         processingEnabled={player.processingEnabled}
-        onToggleStereoWide={player.toggleStereoWide}
         onToggleMono={player.toggleMono}
         onSetBalance={player.setBalance}
         onToggleNightMode={player.toggleNightMode}

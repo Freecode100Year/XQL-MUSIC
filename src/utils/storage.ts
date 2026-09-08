@@ -124,19 +124,20 @@ export function setOutputMode(mode: OutputMode): void {
 }
 
 export function getGainMultiplier(): number {
-  const raw = localStorage.getItem(KEYS.GAIN_MULTIPLIER);
-  return raw ? parseFloat(raw) : 1.0;
+  const raw = Number.parseFloat(localStorage.getItem(KEYS.GAIN_MULTIPLIER) || '1');
+  return Number.isFinite(raw) ? Math.max(0, Math.min(2, raw)) : 1;
 }
 
 export function setGainMultiplier(gain: number): void {
-  localStorage.setItem(KEYS.GAIN_MULTIPLIER, String(gain));
+  localStorage.setItem(KEYS.GAIN_MULTIPLIER, String(Math.max(0, Math.min(2, gain))));
 }
 
 export type SpatialMode = 'off' | 'wide' | 'mono';
 
 export function getSpatialMode(): SpatialMode {
   const mode = localStorage.getItem(KEYS.SPATIAL_MODE);
-  return mode === 'wide' || mode === 'mono' ? mode : 'off';
+  // Migrate the removed phase-widening mode to neutral stereo.
+  return mode === 'mono' ? mode : 'off';
 }
 
 export function setSpatialMode(mode: SpatialMode): void {
@@ -174,19 +175,19 @@ function getBoundedNumber(key: string, fallback: number, min: number, max: numbe
 }
 
 export function getVirtual8dSpeed(): number {
-  return getBoundedNumber(KEYS.VIRTUAL_8D_SPEED, 0.075, 0.03, 0.2);
+  return getBoundedNumber(KEYS.VIRTUAL_8D_SPEED, 0.075, 0.04, 0.12);
 }
 
 export function setVirtual8dSpeed(value: number): void {
-  localStorage.setItem(KEYS.VIRTUAL_8D_SPEED, String(Math.max(0.03, Math.min(0.2, value))));
+  localStorage.setItem(KEYS.VIRTUAL_8D_SPEED, String(Math.max(0.04, Math.min(0.12, value))));
 }
 
 export function getVirtual8dDepth(): number {
-  return getBoundedNumber(KEYS.VIRTUAL_8D_DEPTH, 0.78, 0.15, 1);
+  return getBoundedNumber(KEYS.VIRTUAL_8D_DEPTH, 0.7, 0.25, 0.85);
 }
 
 export function setVirtual8dDepth(value: number): void {
-  localStorage.setItem(KEYS.VIRTUAL_8D_DEPTH, String(Math.max(0.15, Math.min(1, value))));
+  localStorage.setItem(KEYS.VIRTUAL_8D_DEPTH, String(Math.max(0.25, Math.min(0.85, value))));
 }
 
 export function getEqEnabled(): boolean {

@@ -19,7 +19,7 @@ export interface AdvancedSettings {
 }
 export const DEFAULT_ADVANCED: AdvancedSettings = {
   system: '2.0', trajectory: 'circle', tone: Array(7).fill(0), dialogue: 0,
-  normalize: true, limiter: true, smartMono: false,
+  normalize: false, limiter: true, smartMono: false,
   centerHz: 120, subHz: 120, rearDelay: 20, rearAmbience: 0.25,
   rearDirect: false, rearInvert: false, splitBass: true,
   channelGains: Array(9).fill(1), routing: Array.from({ length: 9 }, (_, i) => i),
@@ -33,21 +33,19 @@ export function sanitizeAdvanced(value: unknown): AdvancedSettings {
   const x = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   const d = DEFAULT_ADVANCED;
   const bool = (key: keyof AdvancedSettings) => typeof x[key] === 'boolean' ? x[key] as boolean : d[key] as boolean;
-  const nums = (key: 'tone' | 'channelGains' | 'routing', min: number, max: number) => d[key].map((n, i) => bounded(Array.isArray(x[key]) ? x[key][i] : undefined, n, min, max));
-  const used = new Set<number>();
-  const routing = nums('routing', -1, 8).map(Math.round).map(n => {
-    if (n < 0 || used.has(n)) return -1;
-    used.add(n); return n;
-  });
+  const safeRouting = Array.from({ length: 9 }, (_, i) => i);
   return {
-    system: typeof x.system === 'string' && Object.hasOwnProperty.call(SYSTEMS, x.system) ? x.system as System : d.system,
+    // The public player intentionally stays stereo. Arbitrary upmix routing,
+    // polarity and per-channel boosts were too easy to turn into silence,
+    // phase cancellation or clipped output on consumer devices.
+    system: '2.0',
     trajectory: ['circle', 'orbital', 'pendulum'].includes(String(x.trajectory)) ? x.trajectory as Trajectory : d.trajectory,
-    tone: nums('tone', -12, 12), dialogue: bounded(x.dialogue, 0, 0, 1),
-    normalize: bool('normalize'), limiter: bool('limiter'), smartMono: bool('smartMono'),
+    tone: Array(7).fill(0), dialogue: bounded(x.dialogue, 0, 0, 1),
+    normalize: false, limiter: true, smartMono: false,
     centerHz: bounded(x.centerHz, 120, 40, 1000), subHz: bounded(x.subHz, 120, 40, 250),
     rearDelay: bounded(x.rearDelay, 20, 0, 100), rearAmbience: bounded(x.rearAmbience, 0.25, 0, 1),
-    rearDirect: bool('rearDirect'), rearInvert: bool('rearInvert'), splitBass: bool('splitBass'),
-    channelGains: nums('channelGains', 0, 2), routing,
+    rearDirect: false, rearInvert: false, splitBass: false,
+    channelGains: Array(9).fill(1), routing: safeRouting,
     fps: [0, 15, 30, 60].includes(Number(x.fps)) ? Number(x.fps) : 30,
     smoothing: bounded(x.smoothing, 0.8, 0, 0.95), silenceSave: bool('silenceSave'),
     silenceSeconds: bounded(x.silenceSeconds, 10, 2, 60), remember: bool('remember'),

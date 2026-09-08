@@ -99,7 +99,20 @@ export class AdvancedAudio {
     const merge = track(this.ctx.createChannelMerger(count));
     const ceilingCurve = () => {
       const curve = new Float32Array(4097);
-      for (let i = 0; i < curve.length; i++) curve[i] = Math.max(-0.97, Math.min(0.97, i / 2048 - 1));
+      for (let i = 0; i < curve.length; i++) {
+        const input = i / 2048 - 1;
+        const magnitude = Math.abs(input);
+        if (magnitude <= 0.75) { curve[i] = input; continue; }
+        // Cubic Hermite knee: unity slope at -2.5 dB, smoothly reaching a
+        // zero-slope 0.95 ceiling. Normal music stays linear and transparent,
+        // while inter-sample reconstruction keeps a little extra headroom.
+        const t = (magnitude - 0.75) / 0.25;
+        const t2 = t * t, t3 = t2 * t;
+        const shaped = (2 * t3 - 3 * t2 + 1) * 0.75
+          + (t3 - 2 * t2 + t) * 0.25
+          + (-2 * t3 + 3 * t2) * 0.95;
+        curve[i] = Math.sign(input) * shaped;
+      }
       return curve;
     };
     const source = (left: number, right: number) => {
@@ -142,10 +155,10 @@ export class AdvancedAudio {
       gain.gain.value = settings.channelGains[index]; node.connect(gain); node = gain;
       this.routeUpdates.push(s => gain.gain.setTargetAtTime(s.channelGains[index], this.ctx.currentTime, 0.03));
       if (settings.limiter) {
-        // Hard ceiling after channel gains: unlike a stereo compressor this
-        // preserves every discrete output channel and cannot silently downmix.
+        // Smooth safety ceiling: the continuous curve avoids the sharp corner
+        // and high-frequency splatter of hard clipping.
         const ceiling = track(this.ctx.createWaveShaper());
-        ceiling.curve = ceilingCurve(); ceiling.oversample = 'none';
+        ceiling.curve = ceilingCurve(); ceiling.oversample = '4x';
         node.connect(ceiling); node = ceiling;
       }
       const analyser = track(this.ctx.createAnalyser()); analyser.fftSize = 2048;
@@ -168,7 +181,7 @@ export class AdvancedAudio {
     });
     if (virtualStereo && settings.limiter) {
       const masterCeiling = track(this.ctx.createWaveShaper());
-      masterCeiling.curve = ceilingCurve(); masterCeiling.oversample = 'none';
+      masterCeiling.curve = ceilingCurve(); masterCeiling.oversample = '4x';
       merge.connect(masterCeiling).connect(this.ctx.destination);
     } else {
       merge.connect(this.ctx.destination);

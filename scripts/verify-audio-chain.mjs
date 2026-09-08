@@ -195,7 +195,7 @@ console.log('\n[4] 音箱外放 Marshall 曲线峰值 vs 配套削减');
 }
 
 // ---------- 5. headroom at the limiter across the volume range ----------
-// The loudness leveller and the 1-3x boost are deliberate gain the limiter is
+// The optional loudness contour and the 1-2x boost are deliberate gain; the limiter is
 // there to catch; what must not overflow on its own is EQ + equal-loudness.
 console.log('\n[5] 各音量点上 EQ + 等响度补偿的净电平（限制器阈值 ' +
   num(playerSrc, /limiter\.threshold\.value = (-?[\d.]+)/) + ' dB）');

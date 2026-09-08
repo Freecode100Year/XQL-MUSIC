@@ -25,7 +25,6 @@ interface SidebarProps {
   onShowEqualizer: () => void;
   onShowAudioStudio: () => void;
   processingEnabled: boolean;
-  onToggleStereoWide: () => void;
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
   onToggleNightMode: () => void;
@@ -38,7 +37,7 @@ export function Sidebar({
   currentPage, setPage, mobileOpen, setMobileOpen, volume, gainMultiplier,
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
   onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
-  balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
+  balance, onToggleMono, onSetBalance, onToggleNightMode,
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
   onShowAudioStudio, processingEnabled,
@@ -106,7 +105,7 @@ export function Sidebar({
               <input
                 type="range"
                 min="0"
-                max="3"
+                max="2"
                 step="0.01"
                 value={gainMultiplier}
                 onChange={(event) => onSetGainMultiplier(parseFloat(event.target.value))}
@@ -159,14 +158,6 @@ export function Sidebar({
 
             <div className="sidebar-audio-title sidebar-booster-title">{t('booster.title')}</div>
             <button
-              className={`sidebar-audio-button ${spatialMode === 'wide' ? 'active' : ''}`}
-              onClick={onToggleStereoWide}
-              title={t('booster.stereoTitle')}
-            >
-              <span>{t('booster.stereo')}</span>
-              <strong>{spatialMode === 'wide' ? t('audio.on') : t('audio.off')}</strong>
-            </button>
-            <button
               className={`sidebar-audio-button ${spatialMode === 'mono' ? 'active' : ''}`}
               onClick={onToggleMono}
               title={t('booster.monoTitle')}
@@ -199,8 +190,8 @@ export function Sidebar({
                   </span>
                   <input
                     type="range"
-                    min="0.03"
-                    max="0.2"
+                    min="0.04"
+                    max="0.12"
                     step="0.005"
                     value={virtual8dSpeed}
                     onChange={(event) => onSetVirtual8dSpeed(parseFloat(event.target.value))}
@@ -214,8 +205,8 @@ export function Sidebar({
                   </span>
                   <input
                     type="range"
-                    min="0.15"
-                    max="1"
+                    min="0.25"
+                    max="0.85"
                     step="0.01"
                     value={virtual8dDepth}
                     onChange={(event) => onSetVirtual8dDepth(parseFloat(event.target.value))}

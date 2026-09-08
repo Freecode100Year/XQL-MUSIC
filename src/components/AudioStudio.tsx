@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { usePlayer } from '../hooks/usePlayer';
 import type { useEqualizer } from '../hooks/useEqualizer';
 import { useI18n } from '../i18n';
-import { AdvancedSettings, DEFAULT_ADVANCED, sanitizeAdvanced, SYSTEMS, System, TONE_HZ, Trajectory, bounded } from '../audio/settings';
+import { AdvancedSettings, DEFAULT_ADVANCED, sanitizeAdvanced, Trajectory, bounded } from '../audio/settings';
 import type { AudioMetrics } from '../audio/advanced';
 
 type Player = ReturnType<typeof usePlayer>;
@@ -20,9 +20,9 @@ function sanitizePreset(value: unknown): Preset {
   if (typeof x.name !== 'string' || !x.name.trim() || !x.advanced || typeof x.advanced !== 'object') throw new Error('Invalid preset');
   return {
     name: x.name.trim().slice(0, 60), advanced: sanitizeAdvanced(x.advanced),
-    gain: bounded(x.gain, 1, 0, 3), balance: bounded(x.balance, 0, -1, 1),
-    night: x.night === true, mono: x.mono === true, wide: x.wide === true, virtual: x.virtual === true,
-    speed: bounded(x.speed, 0.075, 0.03, 0.2), depth: bounded(x.depth, 0.78, 0.15, 1),
+    gain: bounded(x.gain, 1, 0, 2), balance: bounded(x.balance, 0, -1, 1),
+    night: x.night === true, mono: x.mono === true, wide: false, virtual: x.virtual === true,
+    speed: bounded(x.speed, 0.075, 0.04, 0.12), depth: bounded(x.depth, 0.7, 0.25, 0.85),
     crossfeed: ['off', 'light', 'medium', 'strong'].includes(String(x.crossfeed)) ? String(x.crossfeed) : 'off',
     deEsser: x.deEsser === true, loudness: x.loudness === true, output: x.output === 'speaker' ? 'speaker' : 'headphone',
     volume: bounded(x.volume, 0.8, 0, 1), eqEnabled: x.eqEnabled === true,
@@ -115,8 +115,7 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
     if (p.nightMode !== preset.night) p.toggleNightMode();
     if (p.virtual8d !== preset.virtual) p.toggleVirtual8d();
     if (preset.mono && p.spatialMode !== 'mono') p.toggleMono();
-    else if (!preset.mono && preset.wide && p.spatialMode !== 'wide') p.toggleStereoWide();
-    else if (!preset.mono && !preset.wide) { if (p.spatialMode === 'wide') p.toggleStereoWide(); if (p.spatialMode === 'mono') p.toggleMono(); }
+    else if (!preset.mono && p.spatialMode === 'mono') p.toggleMono();
     if (p.outputMode !== preset.output) p.toggleOutputMode();
     if (p.deEsser !== preset.deEsser) p.toggleDeEsser();
     if (p.loudnessComp !== preset.loudness) p.toggleLoudnessComp();
@@ -129,10 +128,10 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
     const preset = sanitizePreset({ ...snapshot(mode), advanced: { ...DEFAULT_ADVANCED, theme: a.theme, remember: a.remember },
       gain: 1, balance: 0, night: false, mono: false, wide: false, virtual: false,
       crossfeed: 'off', deEsser: false, loudness: false, eqEnabled: false, eqGains: Array(31).fill(0) });
-    if (mode === 'Music') { preset.wide = true; preset.advanced.tone = [2, 0, -1, 0, 1, 0, 1]; }
-    if (mode === 'Cinema') { preset.night = true; preset.advanced.dialogue = 0.4; preset.advanced.tone = [3, 1, 0, 0, 1, 0, 0]; }
-    if (mode === 'Voice') { preset.mono = true; preset.deEsser = true; preset.advanced.dialogue = 0.7; preset.advanced.tone = [-3, -1, 0, 2, 1, -1, -2]; }
-    if (mode === 'Gaming') { preset.advanced.tone = [-2, -1, 0, 1, 2, 1, 0]; preset.advanced.dialogue = 0.3; }
+    if (mode === 'Music') { preset.crossfeed = 'light'; }
+    if (mode === 'Cinema') { preset.night = true; preset.advanced.dialogue = 0.35; }
+    if (mode === 'Voice') { preset.mono = true; preset.deEsser = true; preset.advanced.dialogue = 0.6; }
+    if (mode === 'Gaming') { preset.advanced.dialogue = 0.25; }
     if (mode === '8D') { preset.virtual = true; preset.advanced.trajectory = 'circle'; }
     apply(preset);
   };
@@ -160,69 +159,33 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
         <p>{p.processingEnabled ? tx('音效模式 · 戴上耳机体验 8D；手机锁屏可能暂停音效播放。', 'Effects mode · Headphones recommended. Mobile lock screens may suspend effects playback.') : tx('原生播放 · 锁屏优先；开启音效后下面的调节才会生效。', 'Native playback · Lock-screen priority. Enable effects to hear these controls.')}</p>
       </div>
       <nav className="studio-tabs" aria-label={tx('音频设置分类', 'Audio settings sections')}>
-        {[['sound', '声音', 'Sound'], ['channels', '声道', 'Channels'], ['presets', '预设', 'Presets'], ['analysis', '分析', 'Analysis'], ['settings', '设置', 'Settings']].map(([id, zh, en]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{tx(zh, en)}</button>)}
+        {[['sound', '声音', 'Sound'], ['presets', '预设', 'Presets'], ['analysis', '分析', 'Analysis'], ['settings', '设置', 'Settings']].map(([id, zh, en]) => <button type="button" key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{tx(zh, en)}</button>)}
       </nav>
       <div className="studio-scroll">
         {notice && <p className="studio-notice" role="status">{notice}</p>}
         {tab === 'sound' && <>
-          <section className="studio-system"><small>{tx('音频系统', 'Audio system')}</small><h3>{p.virtual8d ? tx('2 声道 · 8D 虚拟', '2 channels · Virtual 8D') : a.system + tx(' 声道', ' channels')}</h3>
-            <div className="studio-actions"><button onClick={() => { if (p.virtual8d) p.toggleVirtual8d(); put({ system: '2.0' }); }}>{tx('立体声', 'Stereo')}</button><button onClick={() => { if (!p.virtual8d) p.toggleVirtual8d(); put({ system: '2.0' }); }}>8D · HRTF</button><button onClick={() => setTab('channels')}>{tx('环绕声', 'Surround')}</button></div>
+          <section className="studio-system"><small>{tx('安全音频模式', 'Safe audio mode')}</small><h3>{p.virtual8d ? tx('2 声道 · 8D 虚拟', '2 channels · Virtual 8D') : tx('2 声道 · 立体声', '2 channels · Stereo')}</h3>
+            <div className="studio-actions"><button onClick={() => { if (p.virtual8d) p.toggleVirtual8d(); }}>{tx('立体声', 'Stereo')}</button><button onClick={() => { if (!p.virtual8d) p.toggleVirtual8d(); }}>8D · HRTF</button></div>
           </section>
-          {range(tx('预放大（输入）', 'Input pre-amplification'), p.gainMultiplier * 100, 0, 300, 1, n => p.setGainMultiplier(n / 100), '%')}
+          {range(tx('预放大（输入）', 'Input pre-amplification'), p.gainMultiplier * 100, 0, 200, 1, n => p.setGainMultiplier(n / 100), '%')}
           {range(tx('播放音量', 'Playback volume'), p.volume * 100, 0, 100, 1, n => p.setVolume(n / 100), '%')}
           {toggle(tx('2 声道 8D 虚拟', '2-channel virtual 8D'), p.virtual8d, () => { if (!p.virtual8d) put({ system: '2.0' }); p.toggleVirtual8d(); })}
           {p.virtual8d && <section className="studio-card">
             <label>{tx('移动轨迹', 'Trajectory')}<select value={a.trajectory} onChange={e => put({ trajectory: e.target.value as Trajectory })}><option value="circle">{tx('环绕', 'Circular')}</option><option value="orbital">{tx('空间轨道', 'Orbital')}</option><option value="pendulum">{tx('左右钟摆', 'Pendulum')}</option></select></label>
-            {range(tx('旋转速度', 'Rotation speed'), p.virtual8dSpeed * 60, 1.8, 12, 0.3, n => p.setVirtual8dSpeed(n / 60), tx(' 次/分', ' cycles/min'))}
-            {range(tx('空间幅度', 'Spatial depth'), p.virtual8dDepth * 100, 15, 100, 1, n => p.setVirtual8dDepth(n / 100), '%')}
+            {range(tx('旋转速度', 'Rotation speed'), p.virtual8dSpeed * 60, 2.4, 7.2, 0.3, n => p.setVirtual8dSpeed(n / 60), tx(' 次/分', ' cycles/min'))}
+            {range(tx('空间幅度', 'Spatial depth'), p.virtual8dDepth * 100, 25, 85, 1, n => p.setVirtual8dDepth(n / 100), '%')}
           </section>}
-          {toggle(tx('立体声增强', 'Stereo widening'), p.spatialMode === 'wide', p.toggleStereoWide)}
           {toggle(tx('单声道', 'Mono'), p.spatialMode === 'mono', p.toggleMono)}
-          {toggle(tx('智能补全单侧声音', 'Smart mono recovery'), a.smartMono, () => put({ smartMono: !a.smartMono }), tx('持续一秒仅一侧有声时复制到另一侧', 'Copies a channel when the other has been silent for one second'))}
           {range(tx('左右平衡', 'Left / right balance'), p.balance * 100, -100, 100, 1, n => p.setBalance(n / 100))}
           <button className="studio-secondary" onClick={() => p.setBalance(0)}>{tx('恢复居中', 'Center balance')}</button>
           {toggle(tx('夜间模式', 'Night mode'), p.nightMode, p.toggleNightMode)}
           {range(tx('人声清晰度', 'Voice clarity'), a.dialogue * 100, 0, 100, 1, n => put({ dialogue: n / 100 }), '%')}
-          {toggle(tx('自动音量均衡', 'Automatic loudness leveling'), a.normalize, () => put({ normalize: !a.normalize }))}
-          {toggle(tx('峰值限制器', 'Peak limiter'), a.limiter, () => put({ limiter: !a.limiter }))}
           {toggle(tx('耳机交叉馈送 · ', 'Headphone crossfeed · ') + p.crossfeedMode, p.crossfeedMode !== 'off', p.cycleCrossfeed)}
           {toggle(tx('齿音抑制', 'De-esser'), p.deEsser, p.toggleDeEsser)}
           {toggle(tx('等响度补偿', 'Loudness compensation'), p.loudnessComp, p.toggleLoudnessComp)}
           {toggle(tx('音箱外放曲线', 'Speaker voicing'), p.outputMode === 'speaker', p.toggleOutputMode)}
-          <h3>{tx('7 段快速均衡器', '7-band quick EQ')}</h3>
-          {TONE_HZ.map((frequency, i) => <React.Fragment key={frequency}>{range(`${frequency} Hz`, a.tone[i], -12, 12, 0.5, n => put({ tone: a.tone.map((v, j) => i === j ? n : v) }), ' dB')}</React.Fragment>)}
-          <div className="studio-actions"><button onClick={() => put({ tone: Array(7).fill(0) })}>{tx('重置 7 段', 'Reset 7 bands')}</button><button onClick={() => { onClose(); onOpenEqualizer(); }}>{tx('打开 31 段精细均衡器', 'Open 31-band equalizer')}</button></div>
-        </>}
-        {tab === 'channels' && <>
-          <p>{tx('设备报告最大声道数：', 'Reported hardware channels: ')}{p.hardwareChannels} · {tx('当前输出：', 'Current output: ')}{p.activeChannels}</p>
-          <p className="studio-hint">{tx('环绕声由立体声上混生成。HDMI / SPDIF 的实际输出取决于系统和接收器；网页不能强制突破设备报告的声道数。', 'Surround is upmixed from stereo. HDMI / SPDIF output depends on your system and receiver; the website cannot override reported hardware limits.')}</p>
-          <label>{tx('音频系统', 'Audio system')}<select value={a.system} onChange={e => { put({ system: e.target.value as System }); if (p.virtual8d && e.target.value !== '2.0') p.toggleVirtual8d(); }}>
-            {Object.entries(SYSTEMS).map(([system, channels]) => <option key={system} value={system}>{system} — {channels.length} {tx('声道', 'channels')}{channels.length > p.hardwareChannels ? tx('（自动虚拟成立体声）', ' (virtual stereo fallback)') : ''}</option>)}
-          </select></label>
-          <p className="studio-hint">{tx('先启用音效以检测声卡。测试音为短促低音量提示；每行对应一个物理输出。', 'Enable effects to detect hardware. Test tones are brief and quiet. Each row maps to a physical output.')}</p>
-          {SYSTEMS[a.system].map((channel, i) => <section className="studio-card" key={channel}>
-            {range(channel, a.channelGains[i] * 100, 0, 200, 1, n => put({ channelGains: a.channelGains.map((v, j) => i === j ? n / 100 : v) }), '%')}
-            <label>{tx('路由到输出', 'Route to output')}<select value={a.routing[i]} onChange={e => {
-              const target = Number(e.target.value), routing = [...a.routing];
-              const other = target < 0 ? -1 : routing.findIndex((v, j) => j !== i && v === target);
-              if (other >= 0) routing[other] = routing[i]; routing[i] = target; put({ routing });
-            }}><option value={-1}>{tx('静音 / 不分配', 'Mute / unassigned')}</option>{SYSTEMS[a.system].map((name, j) => <option key={j} value={j}>{j + 1} · {name}</option>)}</select></label>
-            <button className="studio-secondary" disabled={!p.processingEnabled || a.routing[i] < 0} onClick={() => {
-              const routedName = SYSTEMS[a.system][a.routing[i]] || channel;
-              const targets = p.activeChannels > 2 ? [a.routing[i]] : routedName === 'C' || routedName.startsWith('LFE') ? [0, 1] : [routedName.endsWith('R') ? 1 : 0];
-              p.testChannel(targets);
-            }}>{tx('测试这个输出', 'Test this output')}</button>
-          </section>)}
-          <button className="studio-secondary" onClick={() => put({ routing: [...DEFAULT_ADVANCED.routing], channelGains: [...DEFAULT_ADVANCED.channelGains] })}>{tx('重置路由与声道音量', 'Reset routing and channel levels')}</button>
-          <h3>{tx('中置与低音炮滤波', 'Center / subwoofer filters')}</h3>
-          {range(tx('中置高通', 'Center high-pass'), a.centerHz, 40, 1000, 10, n => put({ centerHz: n }), ' Hz')}
-          {range(tx('低音炮低通', 'Subwoofer low-pass'), a.subHz, 40, 250, 5, n => put({ subHz: n }), ' Hz')}
-          {toggle(tx('主音箱分离低频', 'Bass management'), a.splitBass, () => put({ splitBass: !a.splitBass }))}
-          <h3>{tx('后置音箱', 'Rear speakers')}</h3>
-          {range(tx('后置延迟', 'Rear delay'), a.rearDelay, 0, 100, 1, n => put({ rearDelay: n }), ' ms')}
-          {range(tx('后置氛围', 'Rear ambience'), a.rearAmbience * 100, 0, 100, 1, n => put({ rearAmbience: n / 100 }), '%')}
-          {toggle(tx('后置直送前置音频', 'Direct front signal to rear'), a.rearDirect, () => put({ rearDirect: !a.rearDirect }))}
-          {toggle(tx('交换后置左右', 'Swap rear left / right'), a.rearInvert, () => put({ rearInvert: !a.rearInvert }))}
+          <p className="studio-hint">{tx('峰值保护始终开启，防止增强或均衡器造成数字削波。', 'Peak protection is always on to prevent digital clipping from boost or EQ.')}</p>
+          <button className="studio-secondary" onClick={() => { onClose(); onOpenEqualizer(); }}>{tx('打开 31 段安全均衡器', 'Open safe 31-band equalizer')}</button>
         </>}
         {tab === 'presets' && <>
           <h3>{tx('内置音频模式', 'Built-in audio modes')}</h3>

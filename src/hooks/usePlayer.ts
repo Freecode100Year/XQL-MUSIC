@@ -1073,7 +1073,7 @@ export function usePlayer(
   }, []);
 
   const setGainMultiplier = useCallback((gain: number) => {
-    const next = Math.max(0, Math.min(3, Number.isFinite(gain) ? gain : 1));
+    const next = Math.max(0, Math.min(2, Number.isFinite(gain) ? gain : 1));
     setGainMultiplierState(next);
     gainMultiplierRef.current = next;
     saveGainMultiplier(next);
@@ -1122,7 +1122,7 @@ export function usePlayer(
   }, [virtual8d, duckThroughRebuild]);
 
   const setVirtual8dSpeed = useCallback((value: number) => {
-    const next = Math.max(0.03, Math.min(0.2, Number.isFinite(value) ? value : 0.075));
+    const next = Math.max(0.04, Math.min(0.12, Number.isFinite(value) ? value : 0.075));
     virtual8dSpeedRef.current = next;
     setVirtual8dSpeedState(next);
     saveVirtual8dSpeed(next);
@@ -1131,7 +1131,7 @@ export function usePlayer(
   }, []);
 
   const setVirtual8dDepth = useCallback((value: number) => {
-    const next = Math.max(0.15, Math.min(1, Number.isFinite(value) ? value : 0.78));
+    const next = Math.max(0.25, Math.min(0.85, Number.isFinite(value) ? value : 0.7));
     virtual8dDepthRef.current = next;
     setVirtual8dDepthState(next);
     saveVirtual8dDepth(next);

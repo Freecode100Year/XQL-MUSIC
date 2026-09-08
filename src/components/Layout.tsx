@@ -27,7 +27,6 @@ interface LayoutProps {
   onShowEqualizer: () => void;
   onShowAudioStudio: () => void;
   processingEnabled: boolean;
-  onToggleStereoWide: () => void;
   onToggleMono: () => void;
   onSetBalance: (value: number) => void;
   onToggleNightMode: () => void;
@@ -40,7 +39,7 @@ export function Layout({
   currentPage, setPage, children, onSearchFocus, volume, gainMultiplier,
   crossfeedMode, outputMode, eqEnabled, onSetVolume, onSetGainMultiplier,
   onCycleCrossfeed, onToggleOutput, onShowEqualizer, spatialMode, nightMode,
-  balance, onToggleStereoWide, onToggleMono, onSetBalance, onToggleNightMode,
+  balance, onToggleMono, onSetBalance, onToggleNightMode,
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
   onShowAudioStudio, processingEnabled,
@@ -72,7 +71,6 @@ export function Layout({
         onShowEqualizer={onShowEqualizer}
         onShowAudioStudio={onShowAudioStudio}
         processingEnabled={processingEnabled}
-        onToggleStereoWide={onToggleStereoWide}
         onToggleMono={onToggleMono}
         onSetBalance={onSetBalance}
         onToggleNightMode={onToggleNightMode}
