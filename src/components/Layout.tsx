@@ -33,6 +33,9 @@ interface LayoutProps {
   onToggleVirtual8d: () => void;
   onSetVirtual8dSpeed: (value: number) => void;
   onSetVirtual8dDepth: (value: number) => void;
+  username: string | null;
+  onOpenFavorites: () => void;
+  onOpenRegistration: () => void;
 }
 
 export function Layout({
@@ -43,6 +46,7 @@ export function Layout({
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
   onShowAudioStudio, processingEnabled,
+  username, onOpenFavorites, onOpenRegistration,
 }: LayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -77,6 +81,9 @@ export function Layout({
         onToggleVirtual8d={onToggleVirtual8d}
         onSetVirtual8dSpeed={onSetVirtual8dSpeed}
         onSetVirtual8dDepth={onSetVirtual8dDepth}
+        username={username}
+        onOpenFavorites={onOpenFavorites}
+        onOpenRegistration={onOpenRegistration}
       />
       <main className="main-content">
         <TopBar

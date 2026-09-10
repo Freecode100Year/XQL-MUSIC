@@ -18,6 +18,9 @@ import { API, CACHE_TTL } from './config';
 import { requestCache } from './utils/cache';
 import { useI18n } from './i18n';
 import { AudioStudio } from './components/AudioStudio';
+import { FavoritesPage } from './components/FavoritesPage';
+import { RegistrationModal } from './components/RegistrationModal';
+import { useFavorites } from './hooks/useFavorites';
 
 export default function App() {
   const { t } = useI18n();
@@ -49,6 +52,7 @@ export default function App() {
     [eq.filtersRef, eq.preampRef, eq.createFilters, eq.createPreamp],
   );
   const player = usePlayer(addToast, eqBridge);
+  const favorites = useFavorites();
   useEffect(() => {
     const shortcut = (event: KeyboardEvent) => {
       if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return;
@@ -157,6 +161,38 @@ export default function App() {
     }
   }, [player]);
 
+  const handleOpenFavorites = useCallback(() => {
+    if (!favorites.username) {
+      favorites.openRegistration();
+      return;
+    }
+    setCurrentPage('favorites');
+  }, [favorites.username, favorites.openRegistration]);
+
+  const handleRegister = useCallback((username: string) => {
+    const registered = favorites.register(username);
+    if (registered) {
+      addToast(t('toast.registered'), 'success');
+      setCurrentPage('favorites');
+    }
+    return registered;
+  }, [favorites.register, addToast, t]);
+
+  const handleToggleFavorite = useCallback(() => {
+    if (!player.currentSong) return;
+    const added = favorites.toggleFavorite(player.currentSong);
+    if (added === true) addToast(t('toast.favoriteAdded'), 'success');
+    if (added === false) addToast(t('toast.favoriteRemoved'), 'info');
+  }, [player.currentSong, favorites.toggleFavorite, addToast, t]);
+
+  const playFavorites = useCallback((shuffle: boolean) => {
+    const songs = favorites.favorites;
+    if (songs.length === 0) return;
+    const index = shuffle ? Math.floor(Math.random() * songs.length) : 0;
+    player.setPlayMode(shuffle ? 'shuffle' : 'sequential');
+    player.playSong(songs[index], songs, index);
+  }, [favorites.favorites, player.setPlayMode, player.playSong]);
+
   const getCoverUrl = (): string => {
     if (!player.currentSong) return '';
     const song = player.currentSong;
@@ -197,6 +233,9 @@ export default function App() {
         onToggleVirtual8d={player.toggleVirtual8d}
         onSetVirtual8dSpeed={player.setVirtual8dSpeed}
         onSetVirtual8dDepth={player.setVirtual8dDepth}
+        username={favorites.username}
+        onOpenFavorites={handleOpenFavorites}
+        onOpenRegistration={favorites.openRegistration}
       >
         {currentPage === 'home' && (
           <HomePage
@@ -227,6 +266,18 @@ export default function App() {
             focusTrigger={searchFocusTrigger}
           />
         )}
+        {currentPage === 'favorites' && favorites.username && (
+          <FavoritesPage
+            songs={favorites.favorites}
+            currentSong={player.currentSong}
+            username={favorites.username}
+            onPlay={(song, index) => playSongInList(song, favorites.favorites, index)}
+            onPlaySequential={() => playFavorites(false)}
+            onPlayShuffle={() => playFavorites(true)}
+            onAddToQueue={(song) => player.addToQueue([song])}
+            onDownload={handleDownload}
+          />
+        )}
       </Layout>
 
       <Player
@@ -243,6 +294,8 @@ export default function App() {
         onPrev={player.playPrev}
         onShowLyrics={() => setShowLyrics(true)}
         onShowQueue={() => setShowQueue(true)}
+        isFavorite={favorites.isFavorite(player.currentSong)}
+        onToggleFavorite={handleToggleFavorite}
       />
 
       <LyricsOverlay
@@ -289,6 +342,11 @@ export default function App() {
       />
 
       {showAudioStudio && <AudioStudio player={player} eq={eq} onClose={closeAudioStudio} onOpenEqualizer={openEqualizer} />}
+      <RegistrationModal
+        visible={favorites.registrationOpen}
+        onClose={favorites.closeRegistration}
+        onRegister={handleRegister}
+      />
       <Toast toasts={toasts} removeToast={removeToast} />
     </>
   );

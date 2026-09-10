@@ -31,6 +31,9 @@ interface SidebarProps {
   onToggleVirtual8d: () => void;
   onSetVirtual8dSpeed: (value: number) => void;
   onSetVirtual8dDepth: (value: number) => void;
+  username: string | null;
+  onOpenFavorites: () => void;
+  onOpenRegistration: () => void;
 }
 
 export function Sidebar({
@@ -41,6 +44,7 @@ export function Sidebar({
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
   onShowAudioStudio, processingEnabled,
+  username, onOpenFavorites, onOpenRegistration,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -88,6 +92,25 @@ export function Sidebar({
               <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
             </svg>
             <span>{t('nav.search')}</span>
+          </button>
+          <button
+            className={`sidebar-item ${currentPage === 'favorites' ? 'active' : ''}`}
+            onClick={() => {
+              onOpenFavorites();
+              setMobileOpen(false);
+            }}
+          >
+            <span className="sidebar-emoji-icon" aria-hidden="true">❤️</span>
+            <span>{t('nav.favorites')}</span>
+          </button>
+          <button className="sidebar-item sidebar-account" onClick={() => {
+            onOpenRegistration();
+            setMobileOpen(false);
+          }}>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
+            <span>{username ? t('register.account', { username: `${username.slice(0, 3)}****${username.slice(-4)}` }) : t('nav.register')}</span>
           </button>
 
           <section className="sidebar-audio-controls" aria-label={t('audio.settings')}>

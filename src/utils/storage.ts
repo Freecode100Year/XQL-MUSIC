@@ -1,4 +1,5 @@
 import { SEARCH_HISTORY_MAX } from '../config';
+import type { Song } from '../types';
 
 const KEYS = {
   SEARCH_HISTORY: 'xql_search_history',
@@ -19,11 +20,42 @@ const KEYS = {
   VIRTUAL_8D: 'xql_virtual_8d',
   VIRTUAL_8D_SPEED: 'xql_virtual_8d_speed',
   VIRTUAL_8D_DEPTH: 'xql_virtual_8d_depth',
+  USERNAME: 'xql_username',
 } as const;
 
-export function clearLegacyAuthData(): void {
-  localStorage.removeItem('xql_user');
-  localStorage.removeItem('xql_accounts');
+export function getRegisteredUsername(): string | null {
+  const username = localStorage.getItem(KEYS.USERNAME);
+  return username && /^\d{11}$/.test(username) ? username : null;
+}
+
+export function registerUsername(username: string): boolean {
+  if (!/^\d{11}$/.test(username)) return false;
+  localStorage.setItem(KEYS.USERNAME, username);
+  return true;
+}
+
+function favoritesKey(username: string): string {
+  return `xql_favorites_${username}`;
+}
+
+export function getFavorites(username: string): Song[] {
+  if (!/^\d{11}$/.test(username)) return [];
+  try {
+    const value = JSON.parse(localStorage.getItem(favoritesKey(username)) || '[]');
+    if (!Array.isArray(value)) return [];
+    return value.filter((song): song is Song => Boolean(
+      song && typeof song === 'object' && typeof song.id === 'string' &&
+      typeof song.name === 'string' && typeof song.artist === 'string' &&
+      typeof song.source === 'string' && typeof song.sourceType === 'string',
+    )).slice(0, 500);
+  } catch {
+    return [];
+  }
+}
+
+export function setFavorites(username: string, songs: Song[]): void {
+  if (!/^\d{11}$/.test(username)) return;
+  localStorage.setItem(favoritesKey(username), JSON.stringify(songs.slice(0, 500)));
 }
 
 export function getSearchHistory(): string[] {

@@ -19,6 +19,8 @@ interface PlayerProps {
   onPrev: () => void;
   onShowLyrics: () => void;
   onShowQueue: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 }
 
 export function Player({
@@ -35,6 +37,8 @@ export function Player({
   onPrev,
   onShowLyrics,
   onShowQueue,
+  isFavorite,
+  onToggleFavorite,
 }: PlayerProps) {
   const { t } = useI18n();
   const [coverUrl, setCoverUrl] = useState('');
@@ -187,7 +191,22 @@ export function Player({
             )}
           </div>
           <div className="player-info">
-            <span className="player-song-name">{currentSong?.name || t('player.notPlaying')}</span>
+            <div className="player-title-row">
+              <span className="player-song-name">{currentSong?.name || t('player.notPlaying')}</span>
+              {currentSong && (
+                <button
+                  type="button"
+                  className={`player-favorite-btn ${isFavorite ? 'active' : ''}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleFavorite();
+                  }}
+                  aria-pressed={isFavorite}
+                  aria-label={isFavorite ? t('favorite.remove') : t('favorite.add')}
+                  title={isFavorite ? t('favorite.remove') : t('favorite.add')}
+                >❤️</button>
+              )}
+            </div>
             <span className="player-artist">{currentSong?.artist || t('player.chooseSong')}</span>
           </div>
         </div>

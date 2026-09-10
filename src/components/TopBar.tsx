@@ -13,6 +13,7 @@ export function TopBar({ currentPage, onMenuClick, onSearchFocus }: TopBarProps)
   const titles: Record<Page, string> = {
     home: t('nav.home'),
     search: t('nav.search'),
+    favorites: t('nav.favorites'),
   };
 
   return (
