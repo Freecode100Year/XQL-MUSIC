@@ -47,6 +47,7 @@ async function rescueByName(
   name: string,
   artist: string,
   exclude: string,
+  includeMetadata = true,
 ): Promise<{ url: string; pic: string; lrc: string } | null> {
   const target = normalize(name);
   if (!target) return null;
@@ -75,6 +76,8 @@ async function rescueByName(
       const found = urlData?.url;
       if (!found) continue;
 
+      if (!includeMetadata) return { url: found, pic: '', lrc: '' };
+
       const [picData, lrcData] = await Promise.all([
         gdFetch({ types: 'pic', source: src, id: String(item.pic_id || id), size: '300' }),
         gdFetch({ types: 'lyric', source: src, id: String(item.lyric_id || id) }),
@@ -95,6 +98,7 @@ export const onRequestGet: PagesFunction = async (context) => {
   const type = url.searchParams.get('type') || 'wy';
   const name = url.searchParams.get('name') || '';
   const artist = url.searchParams.get('artist') || '';
+  const fast = url.searchParams.get('fast') === '1';
   const source = SOURCE_MAP[type];
   if (!source) {
     return new Response(JSON.stringify({ code: 0, data: null, msg: 'Unsupported source' }), {
@@ -103,10 +107,12 @@ export const onRequestGet: PagesFunction = async (context) => {
   }
 
   try {
+    // Playback requests only need the stream URL. Do not make switching wait
+    // for artwork and lyrics, which are loaded independently by the client.
     const [urlData, picData, lrcData] = await Promise.all([
       gdFetch({ types: 'url', source, id, br: '320' }),
-      gdFetch({ types: 'pic', source, id, size: '300' }),
-      gdFetch({ types: 'lyric', source, id }),
+      fast ? Promise.resolve(null) : gdFetch({ types: 'pic', source, id, size: '300' }),
+      fast ? Promise.resolve(null) : gdFetch({ types: 'lyric', source, id }),
     ]);
 
     let songUrl = urlData?.url || '';
@@ -114,7 +120,7 @@ export const onRequestGet: PagesFunction = async (context) => {
     let lrc = lrcData?.lyric || '';
 
     if (!songUrl && name) {
-      const rescued = await rescueByName(name, artist, source);
+      const rescued = await rescueByName(name, artist, source, !fast);
       if (rescued) {
         songUrl = rescued.url;
         if (!pic) pic = rescued.pic;

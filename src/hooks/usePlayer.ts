@@ -124,6 +124,7 @@ export function usePlayer(
   });
   const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playRequestRef = useRef(0);
+  const songUrlRequestsRef = useRef(new Map<string, Promise<string | null>>());
   const failureSkipRef = useRef<() => boolean>(() => false);
   const autoSkipInFlightRef = useRef(false);
   const failedTrackCountRef = useRef(0);
@@ -900,80 +901,94 @@ export function usePlayer(
     const cached = requestCache.get<string>(cacheKey);
     if (cached) return cached;
 
-    let retries = 2;
-    while (retries >= 0) {
-      try {
-        let url: string = '';
+    const pending = songUrlRequestsRef.current.get(cacheKey);
+    if (pending) return pending;
 
-        if (song.sourceType === 'audius') {
-          const res = await fetch(`${API.AUDIUS}?action=song&id=${encodeURIComponent(song.id)}`);
-          const data = await res.json();
-          if (data.code === 1 && data.data) {
-            url = data.data.url;
-            if (data.data.pic) {
-              requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+    const request = (async () => {
+      let retries = 2;
+      while (retries >= 0) {
+        try {
+          let url: string = '';
+
+          if (song.sourceType === 'audius') {
+            const res = await fetch(`${API.AUDIUS}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url;
+              if (data.data.pic) {
+                requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+              }
+            }
+          } else if (song.sourceType === 'ccmixter') {
+            const res = await fetch(`${API.CCMIXTER}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url || '';
+              if (data.data.pic) {
+                requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+              }
+            }
+          } else if (song.sourceType === 'archive') {
+            const res = await fetch(`${API.ARCHIVE}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url || '';
+            }
+          } else if (song.sourceType === 'openverse') {
+            const res = await fetch(`${API.OPENVERSE}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url || '';
+              if (data.data.pic) {
+                requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+              }
+            }
+          } else if (song.sourceType === 'wikimedia') {
+            const res = await fetch(`${API.WIKIMEDIA}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) url = data.data.url || '';
+          } else if (song.sourceType === 'gd') {
+            const res = await fetch(`${API.GD}?types=url&source=${song.source}&id=${song.id}&br=320`);
+            const data = await res.json();
+            url = data.url || '';
+          } else {
+            const res = await fetch(
+              `${API.SONG}?id=${song.id}&type=${song.source}` +
+                `&name=${encodeURIComponent(song.name)}&artist=${encodeURIComponent(song.artist)}&fast=1`,
+            );
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url;
+              if (data.data.pic) {
+                requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+              }
+              if (data.data.lrc) {
+                requestCache.set(`lyric_${song.sourceType}_${song.source}_${song.id}`, data.data.lrc, CACHE_TTL.LYRIC);
+              }
             }
           }
-        } else if (song.sourceType === 'ccmixter') {
-          const res = await fetch(`${API.CCMIXTER}?action=song&id=${encodeURIComponent(song.id)}`);
-          const data = await res.json();
-          if (data.code === 1 && data.data) {
-            url = data.data.url || '';
-            if (data.data.pic) {
-              requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
-            }
+          if (url) {
+            requestCache.set(cacheKey, url, CACHE_TTL.SONG_URL);
+            return url;
           }
-        } else if (song.sourceType === 'archive') {
-          const res = await fetch(`${API.ARCHIVE}?action=song&id=${encodeURIComponent(song.id)}`);
-          const data = await res.json();
-          if (data.code === 1 && data.data) {
-            url = data.data.url || '';
-          }
-        } else if (song.sourceType === 'openverse') {
-          const res = await fetch(`${API.OPENVERSE}?action=song&id=${encodeURIComponent(song.id)}`);
-          const data = await res.json();
-          if (data.code === 1 && data.data) {
-            url = data.data.url || '';
-            if (data.data.pic) {
-              requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
-            }
-          }
-        } else if (song.sourceType === 'wikimedia') {
-          const res = await fetch(`${API.WIKIMEDIA}?action=song&id=${encodeURIComponent(song.id)}`);
-          const data = await res.json();
-          if (data.code === 1 && data.data) url = data.data.url || '';
-        } else if (song.sourceType === 'gd') {
-          const res = await fetch(`${API.GD}?types=url&source=${song.source}&id=${song.id}&br=320`);
-          const data = await res.json();
-          url = data.url || '';
-        } else {
-          const res = await fetch(
-            `${API.SONG}?id=${song.id}&type=${song.source}` +
-              `&name=${encodeURIComponent(song.name)}&artist=${encodeURIComponent(song.artist)}`,
-          );
-          const data = await res.json();
-          if (data.code === 1 && data.data) {
-            url = data.data.url;
-            if (data.data.pic) {
-              requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
-            }
-            if (data.data.lrc) {
-              requestCache.set(`lyric_${song.sourceType}_${song.source}_${song.id}`, data.data.lrc, CACHE_TTL.LYRIC);
-            }
-          }
+          return null;
+        } catch {
+          retries--;
+          if (retries < 0) return null;
+          await new Promise((r) => setTimeout(r, 600));
         }
-        if (url) {
-          requestCache.set(cacheKey, url, CACHE_TTL.SONG_URL);
-          return url;
-        }
-        return null;
-      } catch {
-        retries--;
-        if (retries < 0) return null;
-        await new Promise((r) => setTimeout(r, 1000));
+      }
+      return null;
+    })();
+
+    songUrlRequestsRef.current.set(cacheKey, request);
+    try {
+      return await request;
+    } finally {
+      if (songUrlRequestsRef.current.get(cacheKey) === request) {
+        songUrlRequestsRef.current.delete(cacheKey);
       }
     }
-    return null;
   }, []);
 
   const playSong = useCallback(async (song: Song, newQueue?: Song[], index?: number) => {
@@ -990,6 +1005,12 @@ export function usePlayer(
     }
     // Duck before the source is swapped; `playing` brings the envelope back up.
     fadeEnv(0, 30);
+    // Stop the previous title immediately. On native mobile playback the Web
+    // Audio envelope is bypassed, so leaving it running made the UI and sound
+    // disagree until the next URL had resolved.
+    audioRef.current?.pause();
+    setCurrentTime(0);
+    setDuration(0);
 
     if (newQueue !== undefined && index !== undefined) {
       setQueue(newQueue);
@@ -1280,20 +1301,16 @@ export function usePlayer(
     activateWebAudio();
   }, [isPlaying, outputMode, crossfeedMode, deEsser, virtual8d, nightMode, activateWebAudio]);
 
-  const preloadNext = useCallback(() => {
-    if (queue.length === 0) return;
+  useEffect(() => {
+    if (queue.length < 2 || queueIndex < 0 || playMode === 'shuffle') return;
     const nextIndex = (queueIndex + 1) % queue.length;
     const nextSong = queue[nextIndex];
-    if (nextSong) {
-      fetchSongUrl(nextSong);
-    }
-  }, [queue, queueIndex, fetchSongUrl]);
-
-  useEffect(() => {
-    if (duration > 0 && currentTime > 0 && duration - currentTime < 30) {
-      preloadNext();
-    }
-  }, [currentTime, duration, preloadNext]);
+    if (!nextSong) return;
+    // Let the current stream start first, then resolve exactly one adjacent URL.
+    // The in-flight map prevents duplicate API calls from rapid state updates.
+    const timer = setTimeout(() => { void fetchSongUrl(nextSong); }, 700);
+    return () => clearTimeout(timer);
+  }, [queue, queueIndex, playMode, fetchSongUrl]);
 
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
