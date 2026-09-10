@@ -233,7 +233,6 @@ export default function App() {
         onToggleVirtual8d={player.toggleVirtual8d}
         onSetVirtual8dSpeed={player.setVirtual8dSpeed}
         onSetVirtual8dDepth={player.setVirtual8dDepth}
-        username={favorites.username}
         onOpenFavorites={handleOpenFavorites}
         onOpenRegistration={favorites.openRegistration}
       >

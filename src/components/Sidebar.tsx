@@ -31,7 +31,6 @@ interface SidebarProps {
   onToggleVirtual8d: () => void;
   onSetVirtual8dSpeed: (value: number) => void;
   onSetVirtual8dDepth: (value: number) => void;
-  username: string | null;
   onOpenFavorites: () => void;
   onOpenRegistration: () => void;
 }
@@ -44,7 +43,7 @@ export function Sidebar({
   virtual8d, onToggleVirtual8d,
   virtual8dSpeed, virtual8dDepth, onSetVirtual8dSpeed, onSetVirtual8dDepth,
   onShowAudioStudio, processingEnabled,
-  username, onOpenFavorites, onOpenRegistration,
+  onOpenFavorites, onOpenRegistration,
 }: SidebarProps) {
   const { t } = useI18n();
   const crossfeedLabels: Record<CrossfeedMode, string> = {
@@ -110,7 +109,7 @@ export function Sidebar({
             <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
               <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
             </svg>
-            <span>{username ? t('register.account', { username: `${username.slice(0, 3)}****${username.slice(-4)}` }) : t('nav.register')}</span>
+            <span>{t('register.title')}</span>
           </button>
 
           <section className="sidebar-audio-controls" aria-label={t('audio.settings')}>
