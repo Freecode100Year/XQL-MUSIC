@@ -85,7 +85,11 @@ export default function App() {
     let url = '';
     const cacheKey = `song_url_${song.sourceType}_${song.source}_${song.id}`;
     const cached = requestCache.get<string>(cacheKey);
-    if (cached) {
+    if (song.sourceType === 'openaudio') {
+      url = `${API.OPENAUDIO}?action=download&id=${encodeURIComponent(song.id)}`;
+    } else if (song.sourceType === 'loc') {
+      url = `${API.LOC}?action=download&id=${encodeURIComponent(song.id)}`;
+    } else if (cached) {
       url = cached;
     } else {
       try {
@@ -142,7 +146,16 @@ export default function App() {
       }
     }
     if (url) {
-      window.open(url, '_blank');
+      if (song.sourceType === 'openaudio' || song.sourceType === 'loc') {
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        window.open(url, '_blank');
+      }
       addToast(t('toast.downloadOpened'), 'success');
     } else {
       addToast(t('toast.downloadUnavailable'), 'error');

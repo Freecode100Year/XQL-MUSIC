@@ -11,7 +11,7 @@ export interface Song {
 
 }
 
-export type SourceType = 'standard' | 'gd' | 'audius' | 'ccmixter' | 'archive' | 'openverse' | 'wikimedia';
+export type SourceType = 'standard' | 'gd' | 'audius' | 'ccmixter' | 'archive' | 'openverse' | 'wikimedia' | 'openaudio' | 'loc';
 export type StandardPlatform = 'wy' | 'jx';
 export type GDSource = 'netease' | 'joox';
 export type AudiusSource = 'au';
@@ -19,7 +19,9 @@ export type CcMixterSource = 'cc';
 export type ArchiveSource = 'ia';
 export type OpenverseSource = 'ov';
 export type WikimediaSource = 'wm';
-export type SongSource = StandardPlatform | GDSource | AudiusSource | CcMixterSource | ArchiveSource | OpenverseSource | WikimediaSource;
+export type OpenAudioSource = 'oa';
+export type LocSource = 'loc';
+export type SongSource = StandardPlatform | GDSource | AudiusSource | CcMixterSource | ArchiveSource | OpenverseSource | WikimediaSource | OpenAudioSource | LocSource;
 
 export interface SongDetail {
   url: string;

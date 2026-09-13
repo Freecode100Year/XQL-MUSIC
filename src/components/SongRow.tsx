@@ -137,6 +137,8 @@ export const SongRow = React.memo(function SongRow({ song, index, isPlaying, onP
           song.source === 'wy' || song.source === 'netease' ? t('source.wy')
             : song.source === 'ia' ? t('source.archive')
               : song.source === 'wm' ? t('source.wikimedia')
+                : song.source === 'oa' ? t('source.openaudio')
+                  : song.source === 'loc' ? t('source.loc')
                 : song.source
         }</span>
       </div>

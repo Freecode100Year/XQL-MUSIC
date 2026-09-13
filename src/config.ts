@@ -7,6 +7,8 @@ export const API = {
   ARCHIVE: '/api/archive',
   OPENVERSE: '/api/openverse',
   WIKIMEDIA: '/api/wikimedia',
+  OPENAUDIO: '/api/openaudio',
+  LOC: '/api/loc',
   AUDIO_PROXY: '/api/audio-proxy',
 } as const;
 
@@ -21,6 +23,8 @@ export const PLATFORMS = [
   { key: 'ia', label: '互联网档案馆', type: 'archive' as const },
   { key: 'ov', label: 'Openverse', type: 'openverse' as const },
   { key: 'wm', label: '维基共享资源', type: 'wikimedia' as const },
+  { key: 'oa', label: 'Open.Audio CC0', type: 'openaudio' as const },
+  { key: 'loc', label: '国会图书馆', type: 'loc' as const },
 ] as const;
 
 export const CACHE_TTL = {

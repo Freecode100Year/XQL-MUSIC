@@ -947,6 +947,20 @@ export function usePlayer(
             const res = await fetch(`${API.WIKIMEDIA}?action=song&id=${encodeURIComponent(song.id)}`);
             const data = await res.json();
             if (data.code === 1 && data.data) url = data.data.url || '';
+          } else if (song.sourceType === 'openaudio') {
+            const res = await fetch(`${API.OPENAUDIO}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url || '';
+              if (data.data.pic) requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+            }
+          } else if (song.sourceType === 'loc') {
+            const res = await fetch(`${API.LOC}?action=song&id=${encodeURIComponent(song.id)}`);
+            const data = await res.json();
+            if (data.code === 1 && data.data) {
+              url = data.data.url || '';
+              if (data.data.pic) requestCache.set(`pic_${song.sourceType}_${song.source}_${song.id}`, data.data.pic, CACHE_TTL.PIC);
+            }
           } else if (song.sourceType === 'gd') {
             const res = await fetch(`${API.GD}?types=url&source=${song.source}&id=${song.id}&br=320`);
             const data = await res.json();
