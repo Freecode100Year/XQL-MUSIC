@@ -365,11 +365,14 @@ a {
 }
 
 .platform-tabs {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(5, max-content);
+  grid-template-rows: repeat(2, auto);
   gap: 8px;
   margin-bottom: 20px;
   overflow-x: auto;
   padding-bottom: 4px;
+  align-items: center;
 }
 
 .platform-tabs::-webkit-scrollbar {
