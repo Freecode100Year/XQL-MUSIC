@@ -6,6 +6,7 @@ export interface Song {
   pic?: string;
   pic_id?: string;
   duration?: number;
+  audioUrl?: string;
   source: SongSource;
   sourceType: SourceType;
 

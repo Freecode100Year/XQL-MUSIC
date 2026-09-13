@@ -8,7 +8,6 @@ export const API = {
   OPENVERSE: '/api/openverse',
   WIKIMEDIA: '/api/wikimedia',
   OPENAUDIO: '/api/openaudio',
-  LOC: '/api/loc',
   AUDIO_PROXY: '/api/audio-proxy',
 } as const;
 

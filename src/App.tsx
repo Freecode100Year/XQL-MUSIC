@@ -82,13 +82,35 @@ export default function App() {
   }, [player.playSong]);
 
   const handleDownload = useCallback(async (song: Song) => {
+    if (song.sourceType === 'loc') {
+      try {
+        if (!song.audioUrl) throw new Error('Missing Library of Congress audio URL');
+        const parsed = new URL(song.audioUrl);
+        if (parsed.protocol !== 'https:' || parsed.hostname !== 'tile.loc.gov' || !parsed.pathname.startsWith('/streaming-services/')) {
+          throw new Error('Invalid Library of Congress audio URL');
+        }
+        const response = await fetch(parsed.toString());
+        if (!response.ok) throw new Error(`Download failed (${response.status})`);
+        const blobUrl = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `loc-${song.id}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        addToast(t('toast.downloadOpened'), 'success');
+      } catch {
+        addToast(t('toast.downloadFailed'), 'error');
+      }
+      return;
+    }
+
     let url = '';
     const cacheKey = `song_url_${song.sourceType}_${song.source}_${song.id}`;
     const cached = requestCache.get<string>(cacheKey);
     if (song.sourceType === 'openaudio') {
       url = `${API.OPENAUDIO}?action=download&id=${encodeURIComponent(song.id)}`;
-    } else if (song.sourceType === 'loc') {
-      url = `${API.LOC}?action=download&id=${encodeURIComponent(song.id)}`;
     } else if (cached) {
       url = cached;
     } else {
@@ -146,7 +168,7 @@ export default function App() {
       }
     }
     if (url) {
-      if (song.sourceType === 'openaudio' || song.sourceType === 'loc') {
+      if (song.sourceType === 'openaudio') {
         const link = document.createElement('a');
         link.href = url;
         link.download = '';

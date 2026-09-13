@@ -120,14 +120,36 @@ async function searchOpenAudio(kw: string, pg: number, signal: AbortSignal): Pro
 }
 
 async function searchLoc(kw: string, pg: number, signal: AbortSignal): Promise<Song[]> {
-  const url = `${API.LOC}?action=search&keyword=${encodeURIComponent(kw)}&page=${pg}&limit=${DEFAULT_LIMIT}`;
-  const data = await searchJson(url, signal);
-  if (data.code !== 1 || !Array.isArray(data.data)) throw new Error('Library of Congress search unavailable');
-  return data.data.map((item: any) => ({
-    id: String(item.id), name: item.name || '', artist: item.artist || 'Library of Congress',
-    album: item.license || item.album || 'Public Domain (US)', pic: item.pic,
-    source: 'loc' as const, sourceType: 'loc' as const,
-  }));
+  const endpoint = new URL('https://www.loc.gov/collections/national-jukebox/');
+  endpoint.searchParams.set('fo', 'json');
+  endpoint.searchParams.set('at', 'results');
+  endpoint.searchParams.set('q', kw.slice(0, 100));
+  endpoint.searchParams.set('c', String(DEFAULT_LIMIT));
+  endpoint.searchParams.set('sp', String(pg));
+  endpoint.searchParams.set('dates', '1900/1922');
+  const data = await searchJson(endpoint.toString(), signal);
+  if (!Array.isArray(data.results)) throw new Error('Library of Congress search unavailable');
+  return data.results.map((item: any) => {
+    const id = String(item.id || '').match(/\/item\/(jukebox-\d+)/i)?.[1] || '';
+    const year = Number(String(item.date || '').match(/^(\d{4})/)?.[1] || 0);
+    const formats = Array.isArray(item.online_format) ? item.online_format : [];
+    const resources = Array.isArray(item.resources) ? item.resources : [];
+    const audioUrl = String(resources.map((resource: any) => resource?.media).find(Boolean) || '');
+    const images = Array.isArray(item.image_url) ? item.image_url : [];
+    const primary = Array.isArray(item.contributor_primary) ? item.contributor_primary : [];
+    const contributors = Array.isArray(item.contributor) ? item.contributor : [];
+    let validAudio = false;
+    try {
+      const parsed = new URL(audioUrl);
+      validAudio = parsed.protocol === 'https:' && parsed.hostname === 'tile.loc.gov' && parsed.pathname.startsWith('/streaming-services/');
+    } catch {}
+    if (!id || year < 1900 || year > 1922 || item.access_restricted === true || !formats.includes('audio') || !validAudio) return null;
+    return {
+      id, name: item.title || '', artist: String(primary[0] || contributors[0] || 'Library of Congress'),
+      album: `Public Domain · ${year}`, pic: String(images[0] || ''), audioUrl,
+      source: 'loc' as const, sourceType: 'loc' as const,
+    };
+  }).filter(Boolean) as Song[];
 }
 
 async function searchAggregate(kw: string, pg: number, signal: AbortSignal): Promise<SearchResponse> {
