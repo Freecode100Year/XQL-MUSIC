@@ -5,6 +5,7 @@ export type Locale = 'zh-CN' | 'en';
 const messages = {
   'zh-CN': {
     'site.title': 'XQL MUSIC - 全网音乐聚合',
+    'repository.open': '在 GitHub 打开 XQL MUSIC 项目',
     'studio.open': '完整音频增强器', 'studio.native': '当前为锁屏优先播放；打开增强器启用音效后，音效调节才生效。',
     'nav.home': '发现音乐', 'nav.search': '搜索', 'nav.favorites': '我的收藏', 'nav.register': '注册',
     'register.title': '注册收藏用户', 'register.description': '输入 11 位纯数字用户名即可使用收藏功能。',
@@ -65,6 +66,7 @@ const messages = {
   },
   en: {
     'site.title': 'XQL MUSIC - Music Search',
+    'repository.open': 'Open the XQL MUSIC project on GitHub',
     'studio.open': 'Full audio enhancer', 'studio.native': 'Lock-screen priority. Open the enhancer and enable effects to hear audio adjustments.',
     'nav.home': 'Discover', 'nav.search': 'Search', 'nav.favorites': 'My favorites', 'nav.register': 'Register',
     'register.title': 'Register for favorites', 'register.description': 'Enter an 11-digit numeric username to use favorites.',

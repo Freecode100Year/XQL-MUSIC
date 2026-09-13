@@ -1,153 +1,112 @@
 # XQL MUSIC
 
-多源聚合在线音乐播放器，支持网易云音乐、JOOX、Audius 的歌曲搜索与播放。
+XQL MUSIC 是一个面向桌面、手机和平板电脑的多音源在线音乐播放器。项目使用 React、TypeScript 和 Web Audio API 构建，并通过 Cloudflare Pages 与 Pages Functions 部署。
 
-## 📢 最新更新 (2026-08-30)
+- 在线网站：[https://mp3.freedom8964.com/](https://mp3.freedom8964.com/)
+- GitHub 仓库：[https://github.com/Freecode100Year/XQL-MUSIC](https://github.com/Freecode100Year/XQL-MUSIC)
+- Cloudflare Pages 备用地址：[https://lesou-music.pages.dev/](https://lesou-music.pages.dev/)
 
-### 🎧 有线入耳式听感优化 + 音箱外放模式
-- **修掉播放中每秒 4 次的重连**：音频图的重建 effect 依赖了每次 render 都新建的 equalizer 对象，`timeupdate` 一触发就整条链路 disconnect/reconnect，表现为持续的细碎断音。改为稳定引用 + 拓扑指纹比对，只有链路形状真的变了才重连。
-- **均衡器预设改为各品牌耳机默认调音曲线**：索尼 / Bose / AirPods / 森海塞尔 / Beats / 三星 AKG / JBL / 小米 / 华为 / 舒尔 / 铁三角 / 拜亚动力 / B&O，外加哈曼 IE 目标与平坦作为基准。按各家出厂调音相对哈曼入耳目标的偏差拟合。
-- **EQ 自动预衰减**：31 段 1/3 倍频程滤波器互相叠加，一排 +4 dB 实际给到约 +6 dB。现在按估算峰值自动扣回增益，不再一开预设就整首歌顶着限制器泵。
-- **齿音抑制（入耳专属）**：LR4 分频在 5.5 kHz 切开，只对高频段做压缩——入耳封闭耳道把共振推到 6–8 kHz，正好压在 320 kbps 有损编码最毛糙的地方。默认开启。
-- **等响度补偿**：入耳隔音好、听感音量低，低音随音量下降掉得最快（ISO 226）。低频/高频搁架随音量自动补偿，音量拉满时归零。默认开启。
-- **交叉馈送分四档**：关 / 轻 / 中 / 强，播放器按钮循环切换，默认「中」。
-- **音量改为感知曲线并移入音频图**：滑杆中点对应 −12 dB；同时音量不再位于响度均衡的测量点之前，避免自动音量和用户调音量互相打架。
-- **响度均衡改用 K 计权**：按 BS.1770 加计权后测量，3 秒窗口 + 门限，低频多的曲子不再被误判为"响"。
-- **切歌 / 暂停 / 播放全程淡入淡出**：换 src 是波形上的阶跃，在封闭入耳里就是一声"啪"。
-- **超低频高通**：耳机模式 20 Hz、音箱模式 55 Hz，把只吃余量不出声的次声砍掉。
-- **限制器重新整定**：移到音量之后，阈值 −1.5 dB、释放 200 ms，只当削顶保护用。
-- **修正交叉馈送的中置像染色**：原先把补偿搁架放在直达路径上、且频点取交叉馈送转折频率——但低通在转折点带约 90° 相移，直达与交叉信号在那里并非算术相加，中置像（人声与低频所在）实测有 1.5–4.0 dB 起伏。改为在合并后的输出上做补偿，频点与深度按档位数值求解，起伏压到 0.50 / 0.79 / 1.08 dB。
-- **新增 `npm run verify:audio`**：按 Audio EQ Cookbook 复现 Web Audio 的双二阶系数，直接算整条链路的真实传递函数，校验预衰减是否够、交叉馈送中置像是否平坦、LR4 求和是否透明、Marshall 曲线净增益是否过零、各音量点是否越过满刻度。上面那条中置像染色就是它查出来的。
-- **新增音箱外放模式**：播放器独立开关，套用 Marshall 有源音箱默认音色（90 Hz 低频搁架 + 3.2 kHz 存在感抬升 + 11 kHz 以上收敛），并自动旁路交叉馈送与齿音抑制这两项耳机专属处理。
+## 主要功能
 
----
+- 聚合搜索：每页最多返回 60 首歌曲，支持按音源筛选与继续加载。
+- 播放控制：播放、暂停、上一首、下一首、进度拖动、音量控制、播放队列、顺序播放、随机播放和单曲循环。
+- 锁屏播放：通过 Media Session API 向手机和平板电脑的锁屏界面提供歌曲信息和播放控制。
+- 收藏列表：使用 11 位数字用户名在当前浏览器注册收藏用户，可顺序或随机播放收藏歌曲。
+- 双语界面：根据设备系统语言自动显示简体中文或英文。
+- 响应式布局：适配桌面浏览器、手机和平板电脑。
+- 歌词与下载：在音源提供相应数据时显示同步歌词或提供下载入口。
 
-### 🎵 音源更新迭代
-- **新增 ccMixter 与 Internet Archive Netlabels**：接入两条无需密钥的公开音乐源。ccMixter 逐首保留 Creative Commons 许可；Internet Archive 仅展示 Netlabels 集合中带 CC 许可、且可公开访问的音频条目。
-- **音源审计**：Audius 已存在，未重复接入；Jamendo、FMA、Musopen、Freesound 等需要应用密钥或账号；MusicBrainz、AcoustID、LRCLIB 和 Lyrics.ovh 是元数据/歌词服务而非播放源；LX Music、Spotube、music-dl 是客户端工具，未作为第三方解析源嵌入。
-- **新增 JOOX 音源**：搜索 / 播放 / 歌词 / 封面全链路可用，作为酷我失效后的主力替代源。
-- **新增 Audius 音源**：接入去中心化音乐平台 Audius 公开 API（无需 key、全球可访问），以欧美 lofi / 电子 / 嘻哈 / 独立音乐为主，与华语源互补。已过滤 `is_streamable: false` 与门控曲目，避免点播 404。
-- **修复酷我播放失效**：上游 `types=url&source=kuwo` 已废，改为服务端跨源兜底——按歌名 + 歌手重新到 netease / joox 匹配取真实播放地址。
-- **修复 QQ 播放错配**：原先把 QQ 的 songmid 拿去请求网易云必然失败，跨源兜底链改为 `wy → jx`。
-- **移除 pjmp3 音源**：源站 HTTPS 已不可用，相关代理与前端引用一并下架。
-- **上游双通道容错**：三个代理均改为 `music-api.gdstudio.xyz` 直连优先、`smusic0.pages.dev` 兜底；网易云再加 Meting 镜像作末级兜底。
-- **剔除无法播放的音源**：实测酷我 8/8 首曲目的播放地址全部来自网易云 CDN——它自身零播放能力，只是个搜索入口；QQ 同样无法拿到自己的 vkey。两者连同已失效的 YouTube(Invidious) 端点一并下架，只保留能提供自有音频的源。
-- **未知音源不再静默回退**：`SOURCE_MAP` 查不到的 type 直接返回空结果，避免已下架的源退回别家曲库冒名顶替。
+## 音源
 
----
+当前搜索入口包括：
 
-## 在线体验
+- 网易云音乐
+- JOOX
+- Audius
+- ccMixter
+- Internet Archive CC
+- Openverse
+- Wikimedia Commons
+- Open.Audio CC0
+- 美国国会图书馆 National Jukebox
 
-- [https://lesou-music.pages.dev](https://lesou-music.pages.dev)
-- [https://mp3.freedom8964.com](https://mp3.freedom8964.com)
+“全网”搜索会并行查询可用音源、交错合并结果并去重。音源是否可搜索、播放或下载取决于上游服务、地区限制和曲目许可；开放授权曲目仍应以来源页面标注的许可为准。
 
-## 功能特性
+## 音频功能
 
-### 音乐播放
-- 多平台聚合搜索（网易云 / JOOX / Audius / ccMixter / Internet Archive CC / 全网聚合）
-- 歌词同步显示（支持 LRC 逐行高亮）
-- 播放模式切换（顺序播放 / 随机播放 / 单曲循环）
-- 播放队列管理（添加、移除、清空）
-- 上一首 / 下一首、进度拖拽
-- 锁屏控制（Media Session API）
+- 31 段图形均衡器与自动预衰减
+- Apple Music、AirPods、哈曼 IE 及多种耳机品牌听感预设
+- 耳机交叉馈送和音箱外放模式
+- 2 声道 8D 虚拟环绕、立体声宽度、单声道兼容和左右平衡
+- 夜间模式、齿音抑制、等响度补偿和 K 计权响度均衡
+- 感知音量曲线、输入增益、切歌淡入淡出、超低频高通和削顶保护
 
-### 音频处理
-- 31 段均衡器（20Hz – 20kHz），支持 SVG 曲线可视化，带自动预衰减
-- 15 种 EQ 预设：平坦、哈曼 IE 目标，以及索尼 / Bose / AirPods / 森海塞尔 / Beats / 三星 AKG / JBL / 小米 / 华为 / 舒尔 / 铁三角 / 拜亚动力 / B&O 的默认调音曲线
-- 耳机交叉馈送（Bauer/Meier 式，关 / 轻 / 中 / 强四档）
-- 齿音抑制（LR4 分频 + 高频段压缩）与等响度补偿（ISO 226）
-- 音箱外放模式：Marshall 有源音箱默认音色，自动旁路耳机专属处理
-- K 计权响度均衡、感知音量曲线、切歌淡入淡出、超低频高通、削顶限制器
-- 3 倍增益调节
-
-### 界面
-- 响应式布局，支持移动端
-- 侧边栏导航
-- 热门歌手快捷入口
-- 搜索历史记录
-- 键盘快捷键（空格暂停、方向键调节进度和音量）
+为减少爆音和失真，音频处理链会自动保留余量，并在输出末端使用限制器。浏览器首次播放仍需要用户主动点击，这是移动浏览器的媒体播放规则。
 
 ## 技术栈
 
-| 类别 | 技术 |
-|------|------|
-| 前端框架 | React 18 + TypeScript |
-| 构建工具 | Vite 6 |
-| 样式 | Tailwind CSS + 自定义 CSS |
-| 音频处理 | Web Audio API（BiquadFilterNode / GainNode / ConvolverNode） |
+| 用途 | 技术 |
+| --- | --- |
+| 用户界面 | React 18、TypeScript |
+| 构建 | Vite 6 |
+| 样式 | Tailwind CSS、自定义 CSS |
+| 音频处理 | Web Audio API、Media Session API |
+| 服务端代理 | Cloudflare Pages Functions |
 | 部署 | Cloudflare Pages |
-| API 代理 | Cloudflare Pages Functions |
-
-## 项目结构
-
-```
-src/
-├── components/       # React 组件
-│   ├── Player.tsx        # 底部播放器
-│   ├── Equalizer.tsx     # 31 段均衡器面板
-│   ├── LyricsOverlay.tsx # 歌词浮层
-│   ├── SearchPage.tsx    # 搜索页
-│   ├── HomePage.tsx      # 发现音乐页
-│   ├── QueuePanel.tsx    # 播放队列
-│   ├── Sidebar.tsx       # 侧边栏导航
-│   └── ...
-├── hooks/            # 自定义 Hooks
-│   ├── usePlayer.ts      # 播放控制核心逻辑
-│   ├── useEqualizer.ts   # 均衡器状态与滤波器
-│   ├── useSearch.ts      # 搜索与分页
-│   ├── useLyrics.ts      # 歌词解析与同步
-│   └── useKeyboard.ts    # 键盘快捷键
-├── utils/            # 工具函数
-│   ├── storage.ts        # localStorage 读写
-│   ├── cache.ts          # 请求缓存
-│   └── format.ts         # 时间格式化等
-├── config.ts         # API 端点与平台配置
-├── types.ts          # TypeScript 类型定义
-└── App.tsx           # 应用入口
-
-functions/api/        # Cloudflare Pages Functions（服务端代理）
-├── search.ts             # 搜索代理
-├── song.ts               # 歌曲详情/URL/歌词代理
-├── gd.ts                 # 聚合源代理
-├── audius.ts             # Audius 源代理（搜索 / 详情）
-├── ccmixter.ts           # ccMixter CC 音乐源（搜索 / 详情）
-├── archive.ts            # Internet Archive Netlabels CC 音乐源（搜索 / 详情）
-├── youtube-search.ts     # YouTube (Invidious) 搜索代理
-└── audio-proxy.ts        # 音频流 CORS 代理
-```
 
 ## 本地开发
 
+需要安装 Node.js 和 npm。
+
 ```bash
-# 安装依赖
 npm install
-
-# 启动开发服务器
 npm run dev
+```
 
-# 构建生产版本
+常用检查命令：
+
+```bash
 npm run build
-
-# 预览生产构建
-npm run preview
-
-# 校验音频链路的频域特性（改动任何滤波器常数后都应跑一次）
 npm run verify:audio
 ```
 
-## 部署
+`verify:audio` 会计算音频处理链的频率响应，检查均衡器预衰减、交叉馈送、分频器求和和输出余量。
 
-项目使用 Cloudflare Pages 部署，`functions/` 目录下的 API 代理会自动部署为 Pages Functions。
+## 项目结构
+
+```text
+src/
+├── audio/          # 高级音频处理、空间效果与参数
+├── components/     # 页面、播放器、侧栏、均衡器与弹窗组件
+├── hooks/          # 播放、搜索、歌词、收藏和均衡器逻辑
+├── utils/          # 缓存、格式化与本地存储
+├── App.tsx         # 应用组合与主要交互
+├── config.ts       # API、音源及公共配置
+└── i18n.tsx        # 中文和英文界面文本
+
+functions/api/      # Cloudflare Pages Functions 音源与音频代理
+public/             # 网站图标与 PWA manifest
+scripts/            # 音频链验证脚本
+```
+
+## 构建与部署
+
+先生成生产文件：
 
 ```bash
-# 手动部署（必须带 --branch=main）
+npm run build
+```
+
+再部署到现有 Cloudflare Pages 项目：
+
+```bash
 npx wrangler pages deploy dist --project-name=lesou-music --branch=main
 ```
 
-> Cloudflare Pages 侧的生产分支名是 `main`，而本仓库的 git 分支是 `master`。
-> 不带 `--branch=main` 时 wrangler 会按当前 git 分支上传，部署落到 `master`
-> 预览环境（`master.lesou-music.pages.dev`），`mp3.freedom8964.com` 不会更新。
+Cloudflare Pages 项目仍使用内部名称 `lesou-music`，这样可以保留现有域名绑定。GitHub 仓库的默认分支是 `master`，Cloudflare 的生产分支是 `main`。
 
-## License
+## 数据与许可说明
 
-MIT
+- 收藏用户名和收藏列表仅保存在当前设备的浏览器本地存储中，不是云端账号系统。
+- 本项目不托管第三方音乐版权；使用者应遵守曲目来源网站的条款、许可和当地法律。
+- 仓库目前未附带单独的开源许可证文件。

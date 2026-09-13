@@ -11,6 +11,8 @@ export const API = {
   AUDIO_PROXY: '/api/audio-proxy',
 } as const;
 
+export const REPOSITORY_URL = 'https://github.com/Freecode100Year/XQL-MUSIC';
+
 // Only sources that actually serve their own audio. Kuwo and QQ were dropped:
 // both still return search hits but neither can hand back a playable url.
 export const PLATFORMS = [

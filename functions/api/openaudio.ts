@@ -37,7 +37,7 @@ async function getTrack(id: string): Promise<any | null> {
   if (!TRACK_ID.test(id)) return null;
   try {
     const response = await fetch(`${OPEN_AUDIO}/api/v2/tracks/${encodeURIComponent(id)}`, {
-      headers: { Accept: 'application/json', 'User-Agent': 'lesou-music/1.0 (CC0 music player)' },
+      headers: { Accept: 'application/json', 'User-Agent': 'XQL-MUSIC/2.0 (CC0 music player)' },
     });
     const track: any = response.ok ? await response.json() : null;
     return isCc0Music(track) && LISTEN_PATH.test(String(track?.listen_url || '')) ? track : null;
@@ -107,7 +107,7 @@ export const onRequestGet: PagesFunction = async (context) => {
 
   if (action === 'stream' || action === 'download') {
     try {
-      const headers: Record<string, string> = { 'User-Agent': 'lesou-music/1.0 (CC0 music player)' };
+      const headers: Record<string, string> = { 'User-Agent': 'XQL-MUSIC/2.0 (CC0 music player)' };
       const range = context.request.headers.get('Range');
       if (range) headers.Range = range;
       const response = await fetch(`${OPEN_AUDIO}${track.listen_url}`, { headers, redirect: 'follow' });

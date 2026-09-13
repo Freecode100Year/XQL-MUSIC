@@ -24,7 +24,7 @@ function licenseLabel(item: any): string {
 async function openverseFetch(path: string): Promise<any | null> {
   try {
     const response = await fetch(`${OPENVERSE}${path}`, {
-      headers: { 'User-Agent': 'lesou-music/1.0 (public CC music player)' },
+      headers: { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' },
     });
     return response.ok ? await response.json() : null;
   } catch {
@@ -90,7 +90,7 @@ export const onRequestGet: PagesFunction = async (context) => {
 
   if (action === 'stream') {
     try {
-      const headers: Record<string, string> = { 'User-Agent': 'lesou-music/1.0 (public CC music player)' };
+      const headers: Record<string, string> = { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' };
       const range = context.request.headers.get('Range');
       if (range) headers.Range = range;
       const response = await fetch(audioUrl, { headers, redirect: 'follow' });

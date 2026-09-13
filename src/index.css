@@ -255,6 +255,33 @@ a {
   font-size: 18px;
   font-weight: 600;
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-repository {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: all var(--transition);
+}
+
+.topbar-repository:hover,
+.topbar-repository:focus-visible {
+  color: var(--text-main);
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
 }
 
 .topbar-search {
@@ -2218,6 +2245,14 @@ a {
 
   .topbar-menu {
     display: flex;
+  }
+
+  .topbar-repository {
+    padding: 8px;
+  }
+
+  .topbar-repository span {
+    display: none;
   }
 
   .page-content {

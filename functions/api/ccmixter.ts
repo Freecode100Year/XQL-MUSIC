@@ -52,7 +52,7 @@ function parseItems(xml: string) {
 async function poolFetch(path: string): Promise<string | null> {
   try {
     const response = await fetch(`${CCMIXTER_POOL}${path}`, {
-      headers: { 'User-Agent': 'lesou-music/1.0 (public CC music player)' },
+      headers: { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' },
     });
     return response.ok ? await response.text() : null;
   } catch {

@@ -37,7 +37,7 @@ async function commonsFetch(params: URLSearchParams): Promise<any | null> {
   params.set('origin', '*');
   try {
     const response = await fetch(`${COMMONS_API}?${params.toString()}`, {
-      headers: { 'User-Agent': 'lesou-music/1.0 (public CC music player)' },
+      headers: { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' },
     });
     return response.ok ? await response.json() : null;
   } catch {
