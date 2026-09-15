@@ -107,7 +107,7 @@ export function SearchPage({
             className={`platform-tab ${platform === p.key ? 'active' : ''}`}
             onClick={() => changePlatform(p.key)}
           >
-            {p.key === 'all' ? t('source.all') : p.key === 'wy' ? t('source.wy') : p.key === 'ia' ? t('source.ia') : p.key === 'wm' ? t('source.wikimedia') : p.key === 'oa' ? t('source.openaudio') : p.key === 'loc' ? t('source.loc') : p.label}
+            {p.key === 'all' ? t('source.all') : p.key === 'wy' ? t('source.wy') : p.key === 'ia' ? t('source.ia') : p.key === 'jm' ? t('source.jamendo') : p.key === 'fs' ? t('source.freesound') : p.key === 'wm' ? t('source.wikimedia') : p.key === 'oa' ? t('source.openaudio') : p.key === 'loc' ? t('source.loc') : p.label}
             {p.key !== 'all' && sourceStatus[p.key] && sourceStatus[p.key] !== 'idle' && (
               <span
                 className={`source-status source-status-${sourceStatus[p.key]}`}

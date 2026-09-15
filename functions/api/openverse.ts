@@ -1,6 +1,8 @@
 const OPENVERSE = 'https://api.openverse.org/v1/audio/';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ANONYMOUS_PAGE_SIZE = 20;
+const SEARCH_SOURCES = new Set(['jamendo', 'freesound']);
+const OPENVERSE_TIMEOUT_MS = 5_000;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -22,13 +24,18 @@ function licenseLabel(item: any): string {
 }
 
 async function openverseFetch(path: string): Promise<any | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), OPENVERSE_TIMEOUT_MS);
   try {
     const response = await fetch(`${OPENVERSE}${path}`, {
       headers: { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' },
+      signal: controller.signal,
     });
     return response.ok ? await response.json() : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -45,11 +52,16 @@ export const onRequestGet: PagesFunction = async (context) => {
     const keyword = requestUrl.searchParams.get('keyword')?.trim() || '';
     const page = Math.max(1, Number.parseInt(requestUrl.searchParams.get('page') || '1', 10));
     const limit = Math.min(ANONYMOUS_PAGE_SIZE, Math.max(1, Number.parseInt(requestUrl.searchParams.get('limit') || '12', 10)));
+    const source = requestUrl.searchParams.get('source') || '';
     if (!keyword) return jsonResponse({ code: 1, data: [] });
+    if (source && !SEARCH_SOURCES.has(source)) {
+      return jsonResponse({ code: 0, data: [], msg: 'Invalid Openverse source' });
+    }
 
     // Anonymous callers may request at most 20 tracks. One upstream request
     // per user search keeps this source below its rate-limit threshold.
     const query = new URLSearchParams({ q: keyword, page: String(page), page_size: String(limit) });
+    if (source) query.set('source', source);
     const result = await openverseFetch(`?${query.toString()}`);
     const results = Array.isArray(result?.results) ? result.results : [];
     if (!results.length && result === null) {
@@ -64,6 +76,7 @@ export const onRequestGet: PagesFunction = async (context) => {
         license: licenseLabel(item),
         pic: item.thumbnail || '',
         duration: typeof item.duration === 'number' ? Math.round(item.duration / 1000) : undefined,
+        catalogSource: String(item.source || ''),
       }))
       .slice(0, limit);
     return jsonResponse({ code: 1, data });

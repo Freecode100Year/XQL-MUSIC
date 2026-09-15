@@ -26,6 +26,8 @@ XQL MUSIC 是一个面向桌面、手机和平板电脑的多音源在线音乐�
 - ccMixter
 - Internet Archive CC
 - Openverse
+- Jamendo CC（通过 Openverse 官方开放索引）
+- Freesound CC 音频（通过 Openverse 官方开放索引）
 - Wikimedia Commons
 - Open.Audio CC0
 - 美国国会图书馆 National Jukebox

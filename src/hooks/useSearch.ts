@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Song, StandardPlatform } from '../types';
+import { OpenverseSource, Song, StandardPlatform } from '../types';
 import { API, CACHE_TTL, SEARCH_DEBOUNCE_MS, DEFAULT_LIMIT, DEFAULT_PLATFORM, PLATFORMS } from '../config';
 import { requestCache } from '../utils/cache';
 import { addSearchHistory } from '../utils/storage';
@@ -86,14 +86,33 @@ async function searchArchive(kw: string, pg: number, signal: AbortSignal): Promi
   }));
 }
 
-async function searchOpenverse(kw: string, pg: number, signal: AbortSignal): Promise<Song[]> {
-  const url = `${API.OPENVERSE}?action=search&keyword=${encodeURIComponent(kw)}&page=${pg}&limit=${DEFAULT_LIMIT}`;
+const OPENVERSE_CATALOG_BY_PLATFORM: Partial<Record<OpenverseSource, 'jamendo' | 'freesound'>> = {
+  jm: 'jamendo',
+  fs: 'freesound',
+};
+
+function openversePlatform(catalogSource: unknown, requestedPlatform: OpenverseSource): OpenverseSource {
+  if (requestedPlatform !== 'ov') return requestedPlatform;
+  if (catalogSource === 'jamendo') return 'jm';
+  if (catalogSource === 'freesound') return 'fs';
+  return 'ov';
+}
+
+async function searchOpenverse(
+  kw: string,
+  pg: number,
+  signal: AbortSignal,
+  requestedPlatform: OpenverseSource = 'ov',
+): Promise<Song[]> {
+  const catalogSource = OPENVERSE_CATALOG_BY_PLATFORM[requestedPlatform];
+  const sourceQuery = catalogSource ? `&source=${catalogSource}` : '';
+  const url = `${API.OPENVERSE}?action=search&keyword=${encodeURIComponent(kw)}&page=${pg}&limit=${DEFAULT_LIMIT}${sourceQuery}`;
   const data = await searchJson(url, signal);
   if (data.code !== 1 || !Array.isArray(data.data)) throw new Error('Openverse search unavailable');
   return data.data.map((item: any) => ({
     id: String(item.id), name: item.name || '', artist: item.artist || 'Openverse',
     album: item.license || 'Creative Commons', pic: item.pic, duration: item.duration,
-    source: 'ov' as const, sourceType: 'openverse' as const,
+    source: openversePlatform(item.catalogSource, requestedPlatform), sourceType: 'openverse' as const,
   }));
 }
 
@@ -242,7 +261,7 @@ export function useSearch() {
       } else if (platformInfo.type === 'archive') {
         response = { songs: await searchArchive(kw, pg, signal), statuses: readyStatus(plat) };
       } else if (platformInfo.type === 'openverse') {
-        response = { songs: await searchOpenverse(kw, pg, signal), statuses: readyStatus(plat) };
+        response = { songs: await searchOpenverse(kw, pg, signal, plat as OpenverseSource), statuses: readyStatus(plat) };
       } else if (platformInfo.type === 'wikimedia') {
         response = { songs: await searchWikimedia(kw, pg, signal), statuses: readyStatus(plat) };
       } else if (platformInfo.type === 'openaudio') {

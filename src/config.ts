@@ -23,6 +23,8 @@ export const PLATFORMS = [
   { key: 'cc', label: 'ccMixter', type: 'ccmixter' as const },
   { key: 'ia', label: '互联网档案馆', type: 'archive' as const },
   { key: 'ov', label: 'Openverse', type: 'openverse' as const },
+  { key: 'jm', label: 'Jamendo CC', type: 'openverse' as const },
+  { key: 'fs', label: 'Freesound CC 音频', type: 'openverse' as const },
   { key: 'wm', label: '维基共享资源', type: 'wikimedia' as const },
   { key: 'oa', label: 'Open.Audio CC0', type: 'openaudio' as const },
   { key: 'loc', label: '国会图书馆', type: 'loc' as const },

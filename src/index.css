@@ -366,7 +366,7 @@ a {
 
 .platform-tabs {
   display: grid;
-  grid-template-columns: repeat(5, max-content);
+  grid-template-columns: repeat(6, max-content);
   grid-template-rows: repeat(2, auto);
   gap: 8px;
   margin-bottom: 20px;
@@ -671,6 +671,16 @@ a {
 .source-badge-au {
   background: rgba(155, 89, 217, 0.15);
   color: #b07ae8;
+}
+
+.source-badge-jm {
+  background: rgba(255, 137, 0, 0.15);
+  color: #f29a38;
+}
+
+.source-badge-fs {
+  background: rgba(0, 168, 150, 0.15);
+  color: #24b8a7;
 }
 
 .sidebar-audio-controls {

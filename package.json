@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "verify:audio": "node scripts/verify-audio-chain.mjs"
+    "verify:audio": "node scripts/verify-audio-chain.mjs",
+    "verify:sources": "node scripts/verify-open-sources.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
