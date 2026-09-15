@@ -71,6 +71,22 @@ export const onRequestGet: PagesFunction = async (context) => {
   const source = SOURCE_MAP[type];
   if (!source) return empty();
 
+  // The public NetEase response is currently the fastest reliable search
+  // path. GD Studio remains below as a fallback instead of delaying every
+  // search behind its browser challenge and intermittent 5xx responses.
+  if (source === 'netease') {
+    const data = await searchNetEase(keyword, page, limit);
+    if (data) {
+      return new Response(JSON.stringify({ code: 1, data }), {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'public, max-age=120',
+        },
+      });
+    }
+  }
+
   for (const base of PROXY_BASES) {
     try {
       const proxyUrl = new URL(base);
@@ -106,22 +122,6 @@ export const onRequestGet: PagesFunction = async (context) => {
       });
     } catch {
       continue;
-    }
-  }
-
-  // GD Studio occasionally enables a browser challenge or returns 5xx. Keep
-  // NetEase searches usable through its public web search response; playback
-  // still resolves separately and preserves the original source identity.
-  if (source === 'netease') {
-    const data = await searchNetEase(keyword, page, limit);
-    if (data) {
-      return new Response(JSON.stringify({ code: 1, data }), {
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'public, max-age=120',
-        },
-      });
     }
   }
 
