@@ -45,7 +45,7 @@ async function searchNetEase(keyword: string, page: number, limit: number): Prom
       name: item.name || '',
       artist: Array.isArray(item.artists) ? item.artists.map((artist: any) => artist?.name).filter(Boolean).join('/') : '',
       album: item.album?.name || '',
-      pic: item.album?.picId || '',
+      pic: String(item.album?.picId_str || item.album?.picId || ''),
       lyric_id: item.id,
       source: 'netease',
     }));

@@ -234,7 +234,7 @@ export default function App() {
     const cacheKey = `pic_${song.sourceType}_${song.source}_${song.id}`;
     const cached = requestCache.get<string>(cacheKey);
     if (cached) return cached;
-    if (song.pic && song.pic.startsWith('http')) return song.pic;
+    if (typeof song.pic === 'string' && song.pic.startsWith('http')) return song.pic;
     return '';
   };
 

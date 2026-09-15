@@ -54,6 +54,7 @@ export function Player({
     }
     setCoverUrl('');
     const loadCover = async () => {
+      const pic = typeof currentSong.pic === 'string' ? currentSong.pic : '';
       const cacheKey = `pic_${currentSong.sourceType}_${currentSong.source}_${currentSong.id}`;
       const cached = requestCache.get<string>(cacheKey);
       if (cached) {
@@ -61,14 +62,14 @@ export function Player({
         return;
       }
 
-      if (currentSong.pic && currentSong.pic.startsWith('http')) {
-        setCoverUrl(currentSong.pic);
+      if (pic.startsWith('http')) {
+        setCoverUrl(pic);
         return;
       }
 
-      if (currentSong.pic && (currentSong.source === 'wy' || currentSong.source === 'netease')) {
+      if (pic && (currentSong.source === 'wy' || currentSong.source === 'netease')) {
         try {
-          const res = await fetch(`${API.GD}?types=pic&source=netease&id=${currentSong.pic}&size=300`);
+          const res = await fetch(`${API.GD}?types=pic&source=netease&id=${pic}&size=300`);
           const data = await res.json();
           if (data.url) {
             requestCache.set(cacheKey, data.url, CACHE_TTL.PIC);

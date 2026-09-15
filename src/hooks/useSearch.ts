@@ -48,7 +48,7 @@ async function searchStandard(kw: string, plat: string, pg: number, signal: Abor
     name: item.name || item.songname || '',
     artist: item.artist || item.singer || '',
     album: item.album || '',
-    pic: item.pic,
+    pic: item.pic == null ? '' : String(item.pic),
     source: plat as StandardPlatform,
     sourceType: 'standard' as const,
   }));
