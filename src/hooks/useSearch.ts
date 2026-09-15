@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { Song, StandardPlatform } from '../types';
-import { API, CACHE_TTL, SEARCH_DEBOUNCE_MS, DEFAULT_LIMIT, PLATFORMS } from '../config';
+import { API, CACHE_TTL, SEARCH_DEBOUNCE_MS, DEFAULT_LIMIT, DEFAULT_PLATFORM, PLATFORMS } from '../config';
 import { requestCache } from '../utils/cache';
 import { addSearchHistory } from '../utils/storage';
 
@@ -186,7 +186,7 @@ export function useSearch() {
   const [results, setResults] = useState<Song[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [platform, setPlatform] = useState<string>(PLATFORMS[0].key);
+  const [platform, setPlatform] = useState<string>(DEFAULT_PLATFORM);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [sourceStatus, setSourceStatus] = useState<SourceStatusMap>({});
