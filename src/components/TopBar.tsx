@@ -25,6 +25,11 @@ export function TopBar({ currentPage, onMenuClick, onSearchFocus }: TopBarProps)
         </svg>
       </button>
       <h1 className="topbar-title">{titles[currentPage]}</h1>
+      <button className="topbar-search" onClick={onSearchFocus}>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+        </svg>
+      </button>
       <a
         className="topbar-repository"
         href={REPOSITORY_URL}
@@ -38,11 +43,6 @@ export function TopBar({ currentPage, onMenuClick, onSearchFocus }: TopBarProps)
         </svg>
         <span>XQL-MUSIC</span>
       </a>
-      <button className="topbar-search" onClick={onSearchFocus}>
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-          <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-        </svg>
-      </button>
     </header>
   );
 }

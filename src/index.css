@@ -265,7 +265,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-right: 8px;
+  margin-right: 0;
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -286,6 +286,7 @@ a {
 
 .topbar-search {
   color: var(--text-secondary);
+  margin-right: 8px;
   padding: 8px;
   border-radius: 50%;
   transition: all var(--transition);
