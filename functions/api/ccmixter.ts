@@ -1,3 +1,4 @@
+import { intParam, MAX_KEYWORD, MAX_PAGE } from '../../shared/params';
 const CCMIXTER_POOL = 'https://ccmixter.org/api/pool';
 
 function jsonResponse(data: unknown): Response {
@@ -65,9 +66,9 @@ export const onRequestGet: PagesFunction = async (context) => {
   const action = url.searchParams.get('action') || 'search';
 
   if (action === 'search') {
-    const keyword = url.searchParams.get('keyword')?.trim() || '';
-    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10));
-    const limit = Math.min(60, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '12', 10)));
+    const keyword = url.searchParams.get('keyword')?.trim().slice(0, MAX_KEYWORD) || '';
+    const page = intParam(url.searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = intParam(url.searchParams.get('limit'), 12, 1, 60);
     if (!keyword) return jsonResponse({ code: 1, data: [] });
 
     const offset = (page - 1) * limit;
@@ -75,7 +76,10 @@ export const onRequestGet: PagesFunction = async (context) => {
       `/search?query=${encodeURIComponent(keyword)}&type=any&limit=${limit}&offset=${offset}`,
     );
     if (!xml) return jsonResponse({ code: 0, data: [], msg: 'ccMixter search failed' });
-    return jsonResponse({ code: 1, data: parseItems(xml) });
+    const items = parseItems(xml);
+    // ccMixter does not report a total; a full page means there may be more.
+    const raw = (xml.match(/<item[\s>]/g) || []).length;
+    return jsonResponse({ code: 1, data: items, hasMore: Math.max(raw, items.length) >= limit });
   }
 
   if (action === 'song') {

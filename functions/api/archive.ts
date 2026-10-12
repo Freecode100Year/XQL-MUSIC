@@ -1,3 +1,4 @@
+import { intParam, MAX_KEYWORD, MAX_PAGE } from '../../shared/params';
 const ARCHIVE = 'https://archive.org';
 
 function jsonResponse(data: unknown): Response {
@@ -37,9 +38,9 @@ export const onRequestGet: PagesFunction = async (context) => {
   const action = url.searchParams.get('action') || 'search';
 
   if (action === 'search') {
-    const keyword = url.searchParams.get('keyword')?.trim() || '';
-    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10));
-    const limit = Math.min(60, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '12', 10)));
+    const keyword = url.searchParams.get('keyword')?.trim().slice(0, MAX_KEYWORD) || '';
+    const page = intParam(url.searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = intParam(url.searchParams.get('limit'), 12, 1, 60);
     if (!keyword) return jsonResponse({ code: 1, data: [] });
 
     const phrase = escapeLucenePhrase(keyword);
@@ -67,7 +68,11 @@ export const onRequestGet: PagesFunction = async (context) => {
           license: licenseLabel(item.licenseurl),
           pic: `${ARCHIVE}/services/img/${encodeURIComponent(item.identifier)}`,
         }));
-      return jsonResponse({ code: 1, data });
+      // numFound counts matches before the licence filter, so a page thinned
+      // by the filter does not end the list.
+      const found = Number(result?.response?.numFound);
+      const hasMore = Number.isFinite(found) ? page * limit < found : docs.length >= limit;
+      return jsonResponse({ code: 1, data, hasMore });
     } catch {
       return jsonResponse({ code: 0, data: [], msg: 'Internet Archive search failed' });
     }

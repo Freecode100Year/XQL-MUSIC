@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "verify:audio": "node scripts/verify-audio-chain.mjs",
-    "verify:sources": "node scripts/verify-open-sources.mjs"
+    "verify:sources": "node scripts/verify-open-sources.mjs",
+    "verify:fixes": "node scripts/verify-fixes.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -17,11 +18,11 @@
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.6.1",
+    "postcss": "^8.5.29",
+    "tailwindcss": "^3.4.19",
     "typescript": "^5.5.3",
-    "vite": "^6.0.0"
+    "vite": "^6.4.4"
   }
 }

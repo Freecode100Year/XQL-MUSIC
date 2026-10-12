@@ -1,3 +1,5 @@
+import { fetchMedia, relayAudio, streamErrorResponse } from '../../shared/stream';
+import { intParam, MAX_PAGE } from '../../shared/params';
 const OPEN_AUDIO = 'https://open.audio';
 const CC0_LICENSE = 'cc0-1.0';
 const TRACK_ID = /^\d+$/;
@@ -57,8 +59,8 @@ export const onRequestGet: PagesFunction = async (context) => {
 
   if (action === 'search') {
     const keyword = requestUrl.searchParams.get('keyword')?.trim().slice(0, 100) || '';
-    const page = Math.max(1, Number.parseInt(requestUrl.searchParams.get('page') || '1', 10));
-    const limit = Math.min(60, Math.max(1, Number.parseInt(requestUrl.searchParams.get('limit') || '12', 10)));
+    const page = intParam(requestUrl.searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = intParam(requestUrl.searchParams.get('limit'), 12, 1, 60);
     if (!keyword) return jsonResponse({ code: 1, data: [] });
 
     const endpoint = new URL(`${OPEN_AUDIO}/api/v2/tracks`);
@@ -83,7 +85,9 @@ export const onRequestGet: PagesFunction = async (context) => {
         pic: coverUrl(track),
         duration: Number(track.uploads?.[0]?.duration) || undefined,
       }));
-      return jsonResponse({ code: 1, data });
+      const hasMore = typeof result.next === 'string' ? Boolean(result.next)
+        : Number.isFinite(Number(result.count)) ? page * limit < Number(result.count) : tracks.length >= limit;
+      return jsonResponse({ code: 1, data, hasMore });
     } catch {
       return jsonResponse({ code: 0, data: [], msg: 'Open.Audio search failed' });
     }
@@ -110,21 +114,19 @@ export const onRequestGet: PagesFunction = async (context) => {
       const headers: Record<string, string> = { 'User-Agent': 'XQL-MUSIC/2.0 (CC0 music player)' };
       const range = context.request.headers.get('Range');
       if (range) headers.Range = range;
-      const response = await fetch(`${OPEN_AUDIO}${track.listen_url}`, { headers, redirect: 'follow' });
-      const responseHeaders = new Headers(CORS_HEADERS);
-      for (const key of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']) {
-        const value = response.headers.get(key);
-        if (value) responseHeaders.set(key, value);
-      }
-      if (!responseHeaders.has('Content-Type')) responseHeaders.set('Content-Type', 'audio/mpeg');
-      responseHeaders.set('Cache-Control', 'public, max-age=3600');
+      const openAudioHost = new URL(OPEN_AUDIO).hostname;
+      // Open.Audio answers with a redirect to signed storage (Wasabi today);
+      // the first address must be Open.Audio's own.
+      const response = await fetchMedia(`${OPEN_AUDIO}${track.listen_url}`, headers,
+        (next, previous) => previous !== null || next.hostname === openAudioHost);
+      const extra: Record<string, string> = {};
       if (action === 'download') {
         const extension = String(track.uploads?.[0]?.extension || 'mp3').replace(/[^a-z0-9]/gi, '') || 'mp3';
-        responseHeaders.set('Content-Disposition', `attachment; filename="open-audio-${id}.${extension}"`);
+        extra['Content-Disposition'] = `attachment; filename="open-audio-${id}.${extension}"`;
       }
-      return new Response(response.body, { status: response.status, headers: responseHeaders });
-    } catch {
-      return new Response('Open.Audio stream failed', { status: 502, headers: CORS_HEADERS });
+      return relayAudio(response, CORS_HEADERS, extra);
+    } catch (error) {
+      return streamErrorResponse(error, CORS_HEADERS);
     }
   }
 

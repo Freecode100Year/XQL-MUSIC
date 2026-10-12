@@ -292,6 +292,7 @@ export default function App() {
             loadMore={searchHook.loadMore}
             changePlatform={searchHook.changePlatform}
             setKeyword={searchHook.setKeyword}
+            clear={searchHook.clear}
             currentSong={player.currentSong}
             onPlay={(song, index) => playSongInList(song, searchHook.results, index)}
             onAddToQueue={(song) => player.addToQueue([song])}

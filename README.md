@@ -70,9 +70,12 @@ npm run dev
 ```bash
 npm run build
 npm run verify:audio
+npm run verify:fixes
 ```
 
 `verify:audio` 会计算音频处理链的频率响应，检查均衡器预衰减、交叉馈送、分频器求和和输出余量。
+
+`verify:fixes` 不联网，检查音频代理只放行音频、逐跳校验重定向，分页参数与翻页游标、本地存储容错、缓存上限和多时间戳歌词。
 
 ## 项目结构
 
@@ -87,6 +90,7 @@ src/
 └── i18n.tsx        # 中文和英文界面文本
 
 functions/api/      # Cloudflare Pages Functions 音源与音频代理
+shared/             # Functions 共用：参数解析、音频转发的安全检查
 public/             # 网站图标与 PWA manifest
 scripts/            # 音频链验证脚本
 ```

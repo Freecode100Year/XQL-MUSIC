@@ -1,3 +1,4 @@
+import { intParam, MAX_KEYWORD, MAX_PAGE } from '../../shared/params';
 // Audius: decentralized, artist-uploaded catalog. Public API, no key required,
 // and unlike the CN sources it is reachable from every Cloudflare edge PoP.
 const AUDIUS_HOSTS = [
@@ -42,16 +43,16 @@ export const onRequestGet: PagesFunction = async (context) => {
   const action = url.searchParams.get('action') || 'search';
 
   if (action === 'search') {
-    const keyword = url.searchParams.get('keyword') || '';
-    const limit = parseInt(url.searchParams.get('limit') || '12', 10);
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const keyword = url.searchParams.get('keyword')?.trim().slice(0, MAX_KEYWORD) || '';
+    const limit = intParam(url.searchParams.get('limit'), 12, 1, 60);
+    const page = intParam(url.searchParams.get('page'), 1, 1, MAX_PAGE);
     if (!keyword) return jsonResponse({ code: 1, data: [] });
 
-    // Over-fetch: the streamable filter below runs after the upstream call, so
-    // asking for exactly `limit` would return short pages (and an empty one when
-    // the single hit happens to be non-streamable), which also broke the
-    // `length >= limit` test the client uses to decide whether more pages exist.
-    const offset = (page - 1) * limit;
+    // The streamable filter runs after the upstream call, so over-fetch, and
+    // report how far into the upstream list this page actually read. The
+    // client sends that back as offset for the next page, so pages neither
+    // overlap nor skip. Without offset, page decides where to start.
+    const offset = intParam(url.searchParams.get('offset'), (page - 1) * limit, 0, MAX_PAGE * 60);
     const fetchCount = Math.min(limit * 2 + 5, 100);
     const result = await audiusFetch(
       `/v1/tracks/search?query=${encodeURIComponent(keyword)}` +
@@ -61,11 +62,15 @@ export const onRequestGet: PagesFunction = async (context) => {
     if (!Array.isArray(list)) return jsonResponse({ code: 0, data: [], msg: 'Audius search failed' });
 
     // Non-streamable and token-gated tracks 404 on /stream, so keep them out of the list.
-    const playable = list.filter(
-      (t: any) => t?.is_streamable !== false && !t?.stream_conditions,
-    );
+    const picked: any[] = [];
+    let read = 0;
+    for (const t of list) {
+      if (picked.length >= limit) break;
+      read++;
+      if (t?.is_streamable !== false && !t?.stream_conditions) picked.push(t);
+    }
 
-    const data = playable.slice(0, limit).map((t: any) => ({
+    const data = picked.map((t: any) => ({
       id: t.id,
       name: t.title || '',
       artist: t.user?.name || t.user?.handle || '',
@@ -73,7 +78,8 @@ export const onRequestGet: PagesFunction = async (context) => {
       pic: pickArtwork(t),
       duration: t.duration || 0,
     }));
-    return jsonResponse({ code: 1, data });
+    const hasMore = read < list.length || list.length >= fetchCount;
+    return jsonResponse({ code: 1, data, hasMore, nextOffset: offset + read });
   }
 
   if (action === 'song') {

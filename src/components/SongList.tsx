@@ -41,10 +41,10 @@ export function SongList({
     const end = Math.min(songs.length, Math.ceil((scrollTop + clientHeight) / ITEM_HEIGHT) + OVERSCAN);
     setVisibleRange({ start, end });
 
-    if (hasMore && onLoadMore && scrollTop + clientHeight >= container.scrollHeight - 200) {
+    if (hasMore && !loading && onLoadMore && scrollTop + clientHeight >= container.scrollHeight - 200) {
       onLoadMore();
     }
-  }, [songs.length, hasMore, onLoadMore]);
+  }, [songs.length, hasMore, loading, onLoadMore]);
 
   useEffect(() => {
     const container = containerRef.current;

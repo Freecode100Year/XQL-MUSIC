@@ -1,3 +1,5 @@
+import { fetchMedia, relayAudio, streamErrorResponse } from '../../shared/stream';
+import { intParam, MAX_KEYWORD, MAX_PAGE } from '../../shared/params';
 const OPENVERSE = 'https://api.openverse.org/v1/audio/';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ANONYMOUS_PAGE_SIZE = 20;
@@ -49,9 +51,9 @@ export const onRequestGet: PagesFunction = async (context) => {
   const action = requestUrl.searchParams.get('action') || 'search';
 
   if (action === 'search') {
-    const keyword = requestUrl.searchParams.get('keyword')?.trim() || '';
-    const page = Math.max(1, Number.parseInt(requestUrl.searchParams.get('page') || '1', 10));
-    const limit = Math.min(ANONYMOUS_PAGE_SIZE, Math.max(1, Number.parseInt(requestUrl.searchParams.get('limit') || '12', 10)));
+    const keyword = requestUrl.searchParams.get('keyword')?.trim().slice(0, MAX_KEYWORD) || '';
+    const page = intParam(requestUrl.searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = intParam(requestUrl.searchParams.get('limit'), 12, 1, ANONYMOUS_PAGE_SIZE);
     const source = requestUrl.searchParams.get('source') || '';
     if (!keyword) return jsonResponse({ code: 1, data: [] });
     if (source && !SEARCH_SOURCES.has(source)) {
@@ -79,7 +81,10 @@ export const onRequestGet: PagesFunction = async (context) => {
         catalogSource: String(item.source || ''),
       }))
       .slice(0, limit);
-    return jsonResponse({ code: 1, data });
+    // Openverse says how many pages there are; filtering cannot end the list early.
+    const pageCount = Number(result?.page_count);
+    const hasMore = Number.isFinite(pageCount) ? page < pageCount : results.length >= limit;
+    return jsonResponse({ code: 1, data, hasMore });
   }
 
   const id = requestUrl.searchParams.get('id') || '';
@@ -106,17 +111,12 @@ export const onRequestGet: PagesFunction = async (context) => {
       const headers: Record<string, string> = { 'User-Agent': 'XQL-MUSIC/2.0 (public CC music player)' };
       const range = context.request.headers.get('Range');
       if (range) headers.Range = range;
-      const response = await fetch(audioUrl, { headers, redirect: 'follow' });
-      const responseHeaders = new Headers(CORS_HEADERS);
-      for (const key of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']) {
-        const value = response.headers.get(key);
-        if (value) responseHeaders.set(key, value);
-      }
-      if (!responseHeaders.has('Content-Type')) responseHeaders.set('Content-Type', 'audio/mpeg');
-      responseHeaders.set('Cache-Control', 'public, max-age=3600');
-      return new Response(response.body, { status: response.status, headers: responseHeaders });
-    } catch {
-      return new Response('Openverse stream failed', { status: 502, headers: CORS_HEADERS });
+      // Openverse indexes files on many hosts (Jamendo, Freesound, Commons...),
+      // so any public host may serve the file; only audio is passed on.
+      const response = await fetchMedia(audioUrl, headers, () => true);
+      return relayAudio(response, CORS_HEADERS);
+    } catch (error) {
+      return streamErrorResponse(error, CORS_HEADERS);
     }
   }
 

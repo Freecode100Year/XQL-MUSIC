@@ -1,3 +1,5 @@
+import { fetchMedia, hostMatches, relayAudio, streamErrorResponse, SAFE_HEADERS, type HopPolicy } from '../../shared/stream';
+
 const ALLOWED_DOMAINS = [
   'music.126.net',
   'joox.com',
@@ -22,24 +24,31 @@ export const onRequestOptions: PagesFunction = async () => {
   });
 };
 
+// The first address must be on the list above. Audius answers with a redirect
+// to whichever content node holds the file, and those nodes are run by many
+// operators under their own domains, so a hop that starts at audius.co may go
+// to any public host; every other hop must stay on the list.
+const allowHop: HopPolicy = (next, previous) =>
+  hostMatches(next.hostname, ALLOWED_DOMAINS) ||
+  (previous !== null && hostMatches(previous.hostname, ['audius.co']));
+
 export const onRequestGet: PagesFunction = async (context) => {
   const url = new URL(context.request.url);
   const audioUrl = url.searchParams.get('url');
 
   if (!audioUrl) {
-    return new Response('Missing url parameter', { status: 400, headers: CORS_HEADERS });
+    return new Response('Missing url parameter', { status: 400, headers: { ...CORS_HEADERS, ...SAFE_HEADERS } });
   }
 
   let parsed: URL;
   try {
     parsed = new URL(audioUrl);
   } catch {
-    return new Response('Invalid url', { status: 400, headers: CORS_HEADERS });
+    return new Response('Invalid url', { status: 400, headers: { ...CORS_HEADERS, ...SAFE_HEADERS } });
   }
 
-  const isAllowed = ALLOWED_DOMAINS.some((domain) => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`));
-  if (!isAllowed) {
-    return new Response('Domain not allowed', { status: 403, headers: CORS_HEADERS });
+  if (!hostMatches(parsed.hostname, ALLOWED_DOMAINS)) {
+    return new Response('Domain not allowed', { status: 403, headers: { ...CORS_HEADERS, ...SAFE_HEADERS } });
   }
 
   try {
@@ -51,20 +60,9 @@ export const onRequestGet: PagesFunction = async (context) => {
     const range = context.request.headers.get('Range');
     if (range) reqHeaders['Range'] = range;
 
-    const response = await fetch(audioUrl, { headers: reqHeaders, redirect: 'follow' });
-
-    const headers = new Headers(CORS_HEADERS);
-    for (const key of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges']) {
-      const val = response.headers.get(key);
-      if (val) headers.set(key, val);
-    }
-    if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'audio/mpeg');
-    }
-    headers.set('Cache-Control', 'public, max-age=3600');
-
-    return new Response(response.body, { status: response.status, headers });
-  } catch {
-    return new Response('Proxy failed', { status: 502, headers: CORS_HEADERS });
+    const response = await fetchMedia(audioUrl, reqHeaders, allowHop);
+    return relayAudio(response, CORS_HEADERS);
+  } catch (error) {
+    return streamErrorResponse(error, CORS_HEADERS);
   }
 };

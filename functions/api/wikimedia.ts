@@ -1,3 +1,4 @@
+import { intParam, MAX_KEYWORD, MAX_PAGE } from '../../shared/params';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 const PLAYABLE_MIMES = /^(audio\/|application\/ogg$)/i;
 
@@ -50,9 +51,9 @@ export const onRequestGet: PagesFunction = async (context) => {
   const action = url.searchParams.get('action') || 'search';
 
   if (action === 'search') {
-    const keyword = url.searchParams.get('keyword')?.trim() || '';
-    const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10));
-    const limit = Math.min(60, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '12', 10)));
+    const keyword = url.searchParams.get('keyword')?.trim().slice(0, MAX_KEYWORD) || '';
+    const page = intParam(url.searchParams.get('page'), 1, 1, MAX_PAGE);
+    const limit = intParam(url.searchParams.get('limit'), 12, 1, 60);
     if (!keyword) return jsonResponse({ code: 1, data: [] });
 
     const params = new URLSearchParams({
@@ -63,7 +64,9 @@ export const onRequestGet: PagesFunction = async (context) => {
     const result = await commonsFetch(params);
     const pages = Object.values(result?.query?.pages || {}) as any[];
     const data = pages.map(toTrack).filter(Boolean).sort((a: any, b: any) => a.name.localeCompare(b.name));
-    return jsonResponse({ code: 1, data });
+    // Commons sends a continue block while more results remain.
+    const hasMore = result?.continue ? true : result ? false : pages.length >= limit;
+    return jsonResponse({ code: 1, data, hasMore });
   }
 
   if (action === 'song') {

@@ -107,7 +107,8 @@ export function AudioStudio({ player: p, eq, onClose, onOpenEqualizer }: {
     deEsser: p.deEsser, loudness: p.loudnessComp, output: p.outputMode, volume: p.volume,
     eqEnabled: eq.enabled, eqGains: [...eq.gains] });
   const persist = (items: Preset[]) => {
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(items)); setPresets(items);
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(items)); } catch { /* keep them for this visit */ }
+    setPresets(items);
   };
   const apply = (preset: Preset) => {
     p.setAdvanced(preset.advanced); p.setGainMultiplier(preset.gain); p.setBalance(preset.balance);
