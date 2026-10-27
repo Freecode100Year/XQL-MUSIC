@@ -1,3 +1,5 @@
+import { intParam, MAX_PAGE, MAX_KEYWORD } from '../../shared/params';
+
 const PROXY_BASES = [
   'https://music-api.gdstudio.xyz/api.php',
   'https://smusic0.pages.dev/api/proxy',
@@ -56,10 +58,10 @@ async function searchNetEase(keyword: string, page: number, limit: number): Prom
 
 export const onRequestGet: PagesFunction = async (context) => {
   const url = new URL(context.request.url);
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 100);
+  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, MAX_KEYWORD);
   const type = url.searchParams.get('type') || 'wy';
-  const page = Math.max(1, Number.parseInt(url.searchParams.get('page') || '1', 10));
-  const limit = Math.min(60, Math.max(1, Number.parseInt(url.searchParams.get('limit') || '12', 10)));
+  const page = intParam(url.searchParams.get('page'), 1, 1, MAX_PAGE);
+  const limit = intParam(url.searchParams.get('limit'), 12, 1, 60);
 
   const empty = () =>
     new Response(JSON.stringify({ code: 0, data: [] }), {
@@ -69,7 +71,7 @@ export const onRequestGet: PagesFunction = async (context) => {
   // A retired source must stay retired: never quietly fall back to another
   // platform's catalogue for a type we no longer serve.
   const source = SOURCE_MAP[type];
-  if (!source) return empty();
+  if (!source || !keyword) return empty();
 
   // The public NetEase response is currently the fastest reliable search
   // path. GD Studio remains below as a fallback instead of delaying every

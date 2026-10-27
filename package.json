@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "verify:audio": "node scripts/verify-audio-chain.mjs",
     "verify:sources": "node scripts/verify-open-sources.mjs",
-    "verify:fixes": "node scripts/verify-fixes.mjs"
+    "verify:fixes": "node scripts/verify-fixes.mjs && node scripts/verify-search.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

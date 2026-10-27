@@ -188,4 +188,22 @@ await test('damaged or blocked storage does not break the player (F11)', () => {
   broken = false;
 });
 
+const search = await load('functions/api/search.ts');
+await test('standard search normalizes malformed paging before calling upstream', async () => {
+  for (const query of ['page=abc&limit=abc', 'page=-5&limit=3oops', 'page=0&limit=0', 'page=999999&limit=999999']) {
+    script = [respond(JSON.stringify({ result: { songs: [] } }))];
+    await get(search.onRequestGet, 'https://x/api/search?keyword=piano&type=wy&' + query);
+    const upstream = new URL(calls.at(-1).url);
+    const expectedLimit = query.includes('999999') ? '60' : query.includes('limit=0') ? '1' : '12';
+    assert.equal(upstream.searchParams.get('limit'), expectedLimit);
+    assert.equal(upstream.searchParams.get('offset'), query.includes('999999') ? String(499 * 60) : '0');
+  }
+});
+await test('empty standard search does not call upstream', async () => {
+  const before = calls.length;
+  const r = await get(search.onRequestGet, 'https://x/api/search?keyword=%20%20&type=wy');
+  assert.equal((await r.json()).code, 0);
+  assert.equal(calls.length, before);
+});
+
 if (failures) process.exitCode = 1;

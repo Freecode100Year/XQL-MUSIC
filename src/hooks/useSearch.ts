@@ -36,14 +36,24 @@ function readyStatus(key: string): SourceStatusMap {
 }
 
 async function searchJson(url: string, signal: AbortSignal): Promise<any> {
+  signal.throwIfAborted();
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), SEARCH_TIMEOUT_MS);
+  let timedOut = false;
+  const timeout = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, SEARCH_TIMEOUT_MS);
   const abort = () => controller.abort();
   signal.addEventListener('abort', abort, { once: true });
   try {
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`Search failed (${response.status})`);
     return await response.json();
+  } catch (error) {
+    if (timedOut && !signal.aborted) {
+      throw new DOMException('Search timed out', 'TimeoutError');
+    }
+    throw error;
   } finally {
     window.clearTimeout(timeout);
     signal.removeEventListener('abort', abort);
